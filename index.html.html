@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1e40af">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ছৈয়দ POS">
+<meta name="description" content="ছৈয়দ স্টোর — Professional POS Billing System">
+<link rel="manifest" id="pwaManifest">
+<title>ছৈয়দ স্টোর POS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════ */
+:root{
+  --bg:#f0f4ff;
+  --card:#ffffff;
+  --border:#dde3f0;
+  --border2:#c7d0e8;
+  --text:#0f172a;
+  --muted:#64748b;
+  --muted2:#94a3b8;
+  --primary:#2563eb;
+  --primary-light:#eff6ff;
+  --primary-dark:#1d4ed8;
+  --success:#16a34a;
+  --success-light:#f0fdf4;
+  --danger:#dc2626;
+  --danger-light:#fef2f2;
+  --warning:#d97706;
+  --warning-light:#fffbeb;
+  --shadow-sm:0 1px 3px rgba(15,23,42,0.08),0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md:0 4px 16px rgba(15,23,42,0.10),0 2px 6px rgba(15,23,42,0.06);
+  --shadow-lg:0 12px 40px rgba(15,23,42,0.16),0 4px 12px rgba(15,23,42,0.08);
+  --shadow-bill:0 20px 60px rgba(15,23,42,0.22),0 8px 20px rgba(15,23,42,0.10);
+  --radius:12px;
+  --radius-lg:18px;
+  --font:'Hind Siliguri',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding-bottom:120px;
+}
+
+/* ═══════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════ */
+.topbar{
+  background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);
+  padding:0 16px;
+  height:60px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 12px rgba(30,64,175,0.3);
+}
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.topbar-logo{
+  width:38px;height:38px;border-radius:10px;
+  background:rgba(255,255,255,0.2);
+  border:1px solid rgba(255,255,255,0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;
+}
+.topbar-name{color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.3px;}
+.topbar-sub{color:rgba(255,255,255,0.7);font-size:11px;margin-top:-2px;}
+.topbar-actions{display:flex;gap:8px;align-items:center;}
+.topbar-btn{
+  background:rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.25);
+  color:#fff;
+  padding:7px 12px;border-radius:9px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  font-family:var(--font);
+  display:flex;align-items:center;gap:5px;
+  transition:background .2s;
+  white-space:nowrap;
+}
+.topbar-btn:hover{background:rgba(255,255,255,0.25);}
+
+/* ── Topbar search ── */
+.topbar-search-wrap{
+  position:relative;
+  flex:1;
+  max-width:260px;
+  min-width:0;
+}
+.topbar-search-wrap input{
+  width:100%;
+  padding:8px 14px 8px 36px;
+  background:rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.28);
+  border-radius:9px;
+  color:#fff;
+  font-size:13px;
+  font-family:var(--font);
+  outline:none;
+  transition:background .2s,border-color .2s;
+  box-shadow:none;
+}
+.topbar-search-wrap input::placeholder{color:rgba(255,255,255,0.6);}
+.topbar-search-wrap input:focus{
+  background:rgba(255,255,255,0.22);
+  border-color:rgba(255,255,255,0.55);
+  box-shadow:none;
+}
+.topbar-search-icon{
+  position:absolute;left:11px;top:50%;
+  transform:translateY(-50%);
+  font-size:14px;pointer-events:none;
+  color:rgba(255,255,255,0.7);
+}
+@media(max-width:520px){
+  .topbar-search-wrap{max-width:140px;}
+}
+
+/* ═══════════════════════════════════════════
+   MAIN CONTAINER — POS (PRIMARY / ALWAYS VISIBLE)
+═══════════════════════════════════════════ */
+.container{
+  max-width:740px;
+  margin:20px auto;
+  padding:0 14px;
+}
+
+/* ═══════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════ */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+  margin-bottom:16px;
+  overflow:hidden;
+}
+.card-header{
+  padding:14px 18px 12px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+.card-header-title{
+  font-size:14px;font-weight:700;color:var(--text);
+  display:flex;align-items:center;gap:7px;
+}
+.card-header-title .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--primary);display:inline-block;
+}
+.card-body{padding:16px 18px;}
+.card-count{margin-left:auto;font-size:12px;font-weight:600;
+  background:var(--primary-light);color:var(--primary);
+  padding:3px 10px;border-radius:20px;border:1px solid #bfdbfe;}
+
+/* ═══════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════ */
+.field-label{
+  display:block;font-size:12px;font-weight:600;
+  color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;
+}
+input,select{
+  width:100%;padding:11px 14px;
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  font-size:14px;font-family:var(--font);
+  background:#fff;color:var(--text);
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+input:focus,select:focus{
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px rgba(37,99,235,0.12);
+}
+input::placeholder{color:var(--muted2);}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-field{margin-bottom:10px;}
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:7px;padding:11px 18px;border:none;border-radius:var(--radius);
+  font-size:14px;font-weight:600;font-family:var(--font);
+  cursor:pointer;transition:all .2s;width:100%;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-success{background:var(--success);color:#fff;}
+.btn-success:hover{filter:brightness(1.08);}
+.btn-danger{background:transparent;border:1.5px solid var(--border2);color:var(--danger);}
+.btn-danger:hover{background:var(--danger-light);border-color:var(--danger);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
+.btn-sm{padding:7px 12px;font-size:12px;width:auto;}
+.btn-warn{background:var(--warning);color:#fff;}
+.btn-warn:hover{filter:brightness(1.08);}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* ═══════════════════════════════════════════
+   SEARCH BAR
+═══════════════════════════════════════════ */
+.search-wrap{position:relative;}
+.search-wrap input{padding-left:42px;}
+.search-icon{
+  position:absolute;left:14px;top:50%;
+  transform:translateY(-50%);
+  font-size:16px;pointer-events:none;
+  color:var(--muted2);
+}
+
+/* ═══════════════════════════════════════════
+   PRODUCT LIST — EXACT ORIGINAL GRID
+═══════════════════════════════════════════ */
+.prod-header{
+  display:grid;
+  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
+  gap:8px;padding:10px 14px;
+  background:#0f172a;color:#fff;
+  border-radius:var(--radius);
+  font-size:12px;font-weight:600;
+  margin-top:12px;align-items:center;
+  letter-spacing:.3px;
+}
+.prod-row{
+  display:grid;
+  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
+  gap:8px;align-items:center;
+  padding:12px 14px;
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  margin-top:7px;
+  background:var(--card);
+  transition:border-color .2s,box-shadow .2s;
+}
+.prod-row:hover{border-color:var(--border2);box-shadow:var(--shadow-sm);}
+.col-name{font-size:14px;font-weight:700;line-height:1.4;word-break:break-word;}
+.col-unit{text-align:center;font-size:12px;color:var(--muted);line-height:1.4;}
+.col-unit .u1{font-weight:600;color:var(--text);}
+.col-price{font-size:15px;font-weight:700;color:var(--success);text-align:center;}
+.col-action{display:flex;justify-content:flex-end;gap:6px;}
+.icon-btn{
+  width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:9px;font-size:14px;cursor:pointer;
+  transition:all .2s;border:1.5px solid var(--border);
+  background:var(--card);
+}
+.icon-btn:hover{transform:translateY(-1px);}
+.edit-btn{border-color:#fde68a;color:var(--warning);}
+.edit-btn:hover{background:var(--warning-light);}
+.delete-btn{border-color:#fecaca;color:var(--danger);}
+.delete-btn:hover{background:var(--danger-light);}
+
+.empty-list{
+  text-align:center;padding:40px 20px;
+  color:var(--muted2);
+}
+.empty-list .e-icon{font-size:42px;margin-bottom:10px;opacity:.5;}
+.empty-list .e-text{font-size:14px;}
+
+/* ═══════════════════════════════════════════
+   STATS STRIP
+═══════════════════════════════════════════ */
+.stats-strip{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  margin-bottom:16px;
+}
+.stat-box{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px 12px;
+  text-align:center;box-shadow:var(--shadow-sm);
+}
+.stat-val{font-size:22px;font-weight:700;color:var(--primary);}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ═══════════════════════════════════════════
+   FLOATING BILL BUTTON — WhatsApp Style
+═══════════════════════════════════════════ */
+#floatingBillBtn{
+  position:fixed;
+  bottom:22px;right:20px;
+  width:62px;height:62px;
+  border-radius:50%;border:none;
+  background:linear-gradient(135deg,#16a34a,#15803d);
+  color:#fff;font-size:26px;
+  box-shadow:0 6px 24px rgba(22,163,74,0.45),0 2px 8px rgba(0,0,0,0.15);
+  cursor:pointer;z-index:999;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .2s,box-shadow .2s;
+}
+#floatingBillBtn:hover{transform:scale(1.07);box-shadow:0 10px 30px rgba(22,163,74,0.5);}
+#floatingBillBtn:active{transform:scale(0.96);}
+#fabBadge{
+  position:absolute;top:-5px;right:-5px;
+  min-width:20px;height:20px;border-radius:10px;
+  background:var(--danger);color:#fff;
+  font-size:10px;font-weight:700;
+  display:none;align-items:center;justify-content:center;
+  padding:0 5px;border:2px solid #fff;
+  box-shadow:0 2px 6px rgba(220,38,38,.4);
+}
+
+/* ═══════════════════════════════════════════
+   BILL POPUP — Floating Panel
+═══════════════════════════════════════════ */
+.bill-box{
+  display:none;
+  position:fixed;
+  bottom:96px;right:20px;
+  width:360px;
+  max-width:calc(100vw - 24px);
+  max-height:calc(100vh - 120px);
+  border-radius:20px;
+  background:#fff;
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-bill);
+  z-index:998;
+  overflow:hidden;
+  flex-direction:column;
+  animation:popIn .22s cubic-bezier(.34,1.56,.64,1);
+}
+.bill-box.show{display:flex;}
+@keyframes popIn{
+  from{opacity:0;transform:scale(.88) translateY(16px);}
+  to{opacity:1;transform:scale(1) translateY(0);}
+}
+
+/* Bill Header */
+.bill-header{
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  color:#fff;
+  padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.bill-header-left{display:flex;align-items:center;gap:9px;}
+.bill-header-icon{font-size:20px;}
+.bill-header-title{font-size:15px;font-weight:700;}
+.bill-header-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;}
+.bill-header-right{display:flex;align-items:center;gap:8px;}
+.bill-close-btn{
+  width:30px;height:30px;border-radius:8px;border:none;
+  background:rgba(255,255,255,.12);
+  color:#fff;font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s;
+}
+.bill-close-btn:hover{background:rgba(255,255,255,.22);}
+.bill-item-badge{
+  background:rgba(255,255,255,.15);
+  color:#fff;font-size:11px;font-weight:700;
+  padding:3px 9px;border-radius:20px;
+}
+
+/* Bill Scrollable Body */
+.bill-body{
+  flex:1;overflow-y:auto;
+  padding:0;
+}
+.bill-body::-webkit-scrollbar{width:5px;}
+.bill-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+/* Mode Toggle */
+.mode-toggle-wrap{padding:12px 14px 0;}
+.mode-toggle{
+  display:grid;grid-template-columns:1fr 1fr;
+  background:#f1f5f9;border:1.5px solid var(--border);
+  border-radius:10px;padding:3px;gap:3px;
+}
+.mode-tab{
+  padding:8px 6px;border:none;border-radius:8px;
+  font-size:12px;font-weight:600;font-family:var(--font);
+  cursor:pointer;transition:all .2s;
+  background:transparent;color:var(--muted);
+}
+.mode-tab.active{
+  background:#fff;color:var(--text);
+  box-shadow:0 1px 4px rgba(15,23,42,0.1);
+  border:1px solid var(--border);
+}
+
+/* Bill Input Section */
+.bill-input-section{padding:12px 14px;}
+.bill-input-section>*+*{margin-top:8px;}
+
+.bill-field-label{
+  font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.4px;
+  display:block;margin-bottom:4px;
+}
+
+/* Bill search results */
+.bill-search-results{
+  background:#fff;
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  max-height:150px;
+  overflow-y:auto;
+  display:none;
+}
+.bill-search-item{
+  padding:10px 13px;cursor:pointer;
+  font-size:13px;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  transition:background .15s;
+}
+.bill-search-item:last-child{border-bottom:none;}
+.bill-search-item:hover{background:#f8fafc;}
+.bsi-price{font-size:12px;font-weight:700;color:var(--success);}
+
+/* Calc Info Box */
+.calc-info{
+  background:var(--primary-light);
+  border:1px solid #bfdbfe;
+  border-radius:9px;padding:9px 13px;
+  font-size:13px;color:var(--primary);
+  font-weight:500;display:none;
+}
+.calc-info.show{display:block;}
+.calc-info.green{background:var(--success-light);border-color:#bbf7d0;color:var(--success);}
+
+/* Bill Items */
+.bill-items-list{padding:0 14px;}
+.bill-empty-state{
+  text-align:center;padding:28px 14px;
+  color:var(--muted2);font-size:13px;
+}
+.bill-empty-state .be-icon{font-size:36px;margin-bottom:8px;opacity:.4;}
+
+.bill-item-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 0;
+  border-bottom:1px solid var(--border);
+}
+.bill-item-row:last-child{border-bottom:none;}
+.bi-left{flex:1;}
+.bi-name{font-size:14px;font-weight:700;line-height:1.3;}
+.bi-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.bi-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.bi-total{font-size:15px;font-weight:700;color:var(--success);}
+.bi-del{
+  width:26px;height:26px;border-radius:7px;
+  border:1.5px solid #fecaca;
+  background:transparent;color:var(--danger);
+  font-size:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.bi-del:hover{background:var(--danger-light);}
+
+/* Bill mode badge */
+.bi-mode-badge{
+  font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px;
+  background:var(--warning-light);color:var(--warning);
+  border:1px solid #fde68a;font-weight:600;
+}
+
+/* Bill Footer */
+.bill-footer{
+  padding:12px 14px;
+  border-top:1.5px solid var(--border);
+  background:#fafbff;
+  flex-shrink:0;
+}
+.bill-total-row{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:12px;
+}
+.bill-total-label{font-size:13px;font-weight:600;color:var(--muted);}
+.bill-grand{font-size:24px;font-weight:700;color:var(--success);}
+.bill-footer-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* ═══════════════════════════════════════════
+   INVOICE MODAL OVERLAY
+═══════════════════════════════════════════ */
+.modal-overlay{
+  position:fixed;inset:0;
+  background:rgba(15,23,42,.65);
+  z-index:2000;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;
+  backdrop-filter:blur(3px);
+  opacity:0;pointer-events:none;
+  transition:opacity .2s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal-box{
+  background:#fff;border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  width:100%;max-width:580px;
+  max-height:92vh;overflow-y:auto;
+  box-shadow:var(--shadow-lg);
+  transform:scale(.95);transition:transform .2s;
+}
+.modal-overlay.open .modal-box{transform:scale(1);}
+.modal-topbar{
+  padding:18px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;background:#fff;z-index:1;
+}
+.modal-title{font-size:17px;font-weight:700;}
+.modal-close{
+  width:32px;height:32px;border-radius:9px;
+  border:1.5px solid var(--border);background:transparent;
+  color:var(--muted);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.modal-close:hover{border-color:var(--danger);color:var(--danger);background:var(--danger-light);}
+.modal-body{padding:20px;}
+.modal-body>*+*{margin-top:12px;}
+
+/* Invoice Preview */
+.inv-preview-wrap{
+  border:1px solid var(--border);border-radius:var(--radius);
+  overflow:hidden;margin-top:16px;
+}
+.inv-preview-header{
+  padding:8px 14px;background:#f1f5f9;
+  font-size:12px;color:var(--muted);font-weight:600;
+  border-bottom:1px solid var(--border);
+}
+.inv-preview-body{background:#fff;padding:20px;max-height:380px;overflow-y:auto;}
+
+/* ═══════════════════════════════════════════
+   BACKUP MODAL
+═══════════════════════════════════════════ */
+.backup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.info-box{
+  background:#f8fafc;border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;
+  font-size:13px;color:var(--muted);line-height:1.8;
+}
+.info-box strong{color:var(--text);display:block;margin-bottom:6px;}
+.highlight-box{
+  background:var(--primary-light);border:1px solid #bfdbfe;
+  border-radius:9px;padding:10px 14px;
+  font-size:13px;color:var(--primary);margin-top:10px;
+}
+
+/* ═══════════════════════════════════════════
+   TOAST NOTIFICATIONS
+═══════════════════════════════════════════ */
+#toastRack{
+  position:fixed;bottom:100px;left:50%;
+  transform:translateX(-50%);
+  z-index:3000;
+  display:flex;flex-direction:column;gap:6px;align-items:center;
+}
+.toast{
+  background:#0f172a;color:#fff;
+  border-radius:10px;padding:9px 18px;
+  font-size:13px;font-weight:500;
+  box-shadow:var(--shadow-lg);
+  animation:toastIn .22s ease;
+  white-space:nowrap;
+  border:1px solid #1e293b;
+}
+.toast.ok{background:#14532d;border-color:#166534;}
+.toast.err{background:#7f1d1d;border-color:#991b1b;}
+.toast.info{background:#1e3a8a;border-color:#1d4ed8;}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ═══════════════════════════════════════════
+   INSTALL BANNER
+═══════════════════════════════════════════ */
+#installBanner{
+  position:fixed;bottom:0;left:0;right:0;
+  background:linear-gradient(90deg,#1e40af,#2563eb);
+  padding:12px 18px;display:flex;align-items:center;gap:12px;
+  z-index:1500;box-shadow:0 -4px 20px rgba(30,64,175,.35);
+  transform:translateY(100%);transition:transform .35s ease;
+}
+#installBanner.show{transform:translateY(0);}
+.ib-text{flex:1;color:#fff;font-size:14px;font-weight:600;}
+.ib-text small{display:block;font-size:11px;opacity:.75;font-weight:400;}
+.ib-btn-install{
+  padding:9px 16px;background:#fff;color:var(--primary);
+  border:none;border-radius:9px;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:var(--font);white-space:nowrap;
+}
+.ib-btn-close{
+  width:30px;height:30px;border:none;border-radius:8px;
+  background:rgba(255,255,255,.2);color:#fff;font-size:18px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media(max-width:520px){
+  .form-row{grid-template-columns:1fr;}
+  .stats-strip{grid-template-columns:1fr 1fr 1fr;}
+  .stat-val{font-size:18px;}
+  .bill-box{
+    bottom:0;right:0;left:0;
+    width:100%;max-width:100%;
+    border-radius:20px 20px 0 0;
+    max-height:82vh;
+  }
+  #floatingBillBtn{bottom:16px;right:16px;}
+}
+
+@media print{
+  body>*{display:none!important;}
+  #printArea{display:block!important;position:static;}
+}
+#printArea{display:none;}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     TOP BAR
+═══════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">🛒</div>
+    <div>
+      <div class="topbar-name">ছৈয়দ স্টোর</div>
+      <div class="topbar-sub">POS v3.0</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <div class="topbar-search-wrap">
+      <span class="topbar-search-icon">🔍</span>
+      <input id="search" placeholder="পণ্য খুঁজুন..." onkeyup="renderData()" autocomplete="off">
+    </div>
+    <button class="topbar-btn" onclick="openBackupModal()">💾 ব্যাকআপ</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN POS CONTAINER — PRIMARY / ALWAYS VISIBLE
+═══════════════════════════════════════════ -->
+<div class="container">
+
+  <!-- Stats Strip -->
+  <div class="stats-strip">
+    <div class="stat-box">
+      <div class="stat-val" id="statTotal">0</div>
+      <div class="stat-lbl">মোট পণ্য</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="statVisible">0</div>
+      <div class="stat-lbl">দেখাচ্ছে</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" id="statBill">0</div>
+      <div class="stat-lbl">বিল আইটেম</div>
+    </div>
+  </div>
+
+  <!-- Add / Edit Product Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-title">
+        <span class="dot"></span>
+        পণ্য যোগ / সম্পাদনা
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-field">
+        <label class="field-label">পণ্যের নাম</label>
+        <input id="name" placeholder="যেমন: সয়াবিন তেল, চাল, ডাল...">
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="field-label">ইউনিট</label>
+          <select id="unit">
+            <option>KG (কেজি)</option>
+            <option>Litre (লিটার)</option>
+            <option>Piece (পিস)</option>
+            <option>Packet (প্যাকেট)</option>
+            <option>Dozen (ডজন)</option>
+            <option>Gram (গ্রাম)</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label class="field-label">প্রতি ইউনিট দাম (৳)</label>
+          <input id="price" placeholder="দাম লিখুন" type="number" min="0" step="any">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="mainBtn" onclick="handleAction()">➕ পণ্য যোগ করুন</button>
+      <button class="btn btn-ghost" id="cancelBtn" onclick="cancelEdit()" style="display:none;margin-top:8px;">✕ বাতিল করুন</button>
+    </div>
+  </div>
+
+  <!-- Product List Card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-header-title">
+        <span class="dot" style="background:var(--success)"></span>
+        পণ্য তালিকা
+      </div>
+      <div class="card-count" id="prodCount">0 টি পণ্য</div>
+    </div>
+    <div class="card-body">
+      <!-- Product Grid Header + Rows -->
+      <div id="list"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+
+<!-- ═══════════════════════════════════════════
+     FLOATING BILL BUTTON — WhatsApp Style
+═══════════════════════════════════════════ -->
+<button id="floatingBillBtn" onclick="toggleBillPanel()" title="বিল স্লিপ খুলুন">
+  🧾
+  <span id="fabBadge">0</span>
+</button>
+
+
+<!-- ═══════════════════════════════════════════
+     BILL POPUP — Floating Panel
+═══════════════════════════════════════════ -->
+<div class="bill-box" id="billBox">
+
+  <!-- Bill Header -->
+  <div class="bill-header">
+    <div class="bill-header-left">
+      <span class="bill-header-icon">🧾</span>
+      <div>
+        <div class="bill-header-title">বিল স্লিপ</div>
+        <div class="bill-header-sub" id="billDateStr">—</div>
+      </div>
+    </div>
+    <div class="bill-header-right">
+      <span class="bill-item-badge" id="billBadgeTop">0 আইটেম</span>
+      <button class="bill-close-btn" onclick="toggleBillPanel()">✕</button>
+    </div>
+  </div>
+
+  <!-- Scrollable Body -->
+  <div class="bill-body">
+
+    <!-- MODE TOGGLE -->
+    <div class="mode-toggle-wrap">
+      <div class="mode-toggle">
+        <button class="mode-tab active" id="tabWeight" onclick="setMode('weight')">⚖️ পরিমাণ → দাম</button>
+        <button class="mode-tab" id="tabPrice" onclick="setMode('price')">💰 বাজেট → পরিমাণ</button>
+      </div>
+    </div>
+
+    <!-- Input Section -->
+    <div class="bill-input-section">
+
+      <!-- Product Search (shared by both modes) -->
+      <div>
+        <label class="bill-field-label">পণ্য বেছে নিন</label>
+        <input id="billSearch" placeholder="পণ্য টাইপ করুন..." oninput="searchBillProducts()">
+        <div class="bill-search-results" id="billSearchResults"></div>
+      </div>
+
+      <!-- MODE A: quantity → price (ORIGINAL FEATURE — UNCHANGED) -->
+      <div id="panelWeight">
+        <label class="bill-field-label">পরিমাণ / ওজন</label>
+        <input id="billQty" type="number" placeholder="পরিমাণ লিখুন" min="0" step="any" oninput="calcFromQty()">
+        <div class="calc-info" id="calcInfoWeight"></div>
+      </div>
+
+      <!-- MODE B: budget → auto weight (NEW FEATURE) -->
+      <div id="panelPrice" style="display:none;">
+        <label class="bill-field-label">কাস্টমারের বাজেট (৳)</label>
+        <input id="billBudget" type="number" placeholder="যেমন: ৫০ টাকার তেল" min="0" step="any" oninput="calcFromBudget()">
+        <div class="calc-info green" id="calcInfoBudget"></div>
+      </div>
+
+      <!-- Add Button -->
+      <button class="btn btn-success" onclick="addSelectedToBill()">➕ বিলে যোগ করুন</button>
+
+    </div><!-- /bill-input-section -->
+
+    <!-- Bill Items -->
+    <div class="bill-items-list">
+      <div class="bill-empty-state" id="billEmptyState">
+        <div class="be-icon">🛒</div>
+        <div>এখনো কোনো পণ্য নেই</div>
+      </div>
+      <div id="billItems"></div>
+    </div>
+
+  </div><!-- /bill-body -->
+
+  <!-- Bill Footer -->
+  <div class="bill-footer">
+    <div class="bill-total-row">
+      <div class="bill-total-label">মোট পরিশোধ</div>
+      <div class="bill-grand" id="grandTotal">৳ 0</div>
+    </div>
+    <div class="bill-footer-btns">
+      <button class="btn btn-primary btn-sm" onclick="openInvoiceModal()">🧾 ইনভয়েস</button>
+      <button class="btn btn-danger btn-sm" onclick="clearBill()">🗑️ ক্লিয়ার</button>
+    </div>
+  </div>
+
+</div><!-- /bill-box -->
+
+
+<!-- ═══════════════════════════════════════════
+     INVOICE MODAL
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="invoiceModal">
+  <div class="modal-box">
+    <div class="modal-topbar">
+      <div class="modal-title">🧾 প্রফেশনাল ইনভয়েস</div>
+      <button class="modal-close" onclick="closeModal('invoiceModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-field">
+          <label class="field-label">দোকানের নাম</label>
+          <input id="invShop" value="ছৈয়দ স্টোর" oninput="refreshInvoicePreview()">
+        </div>
+        <div class="form-field">
+          <label class="field-label">কাস্টমারের নাম</label>
+          <input id="invCustomer" placeholder="ঐচ্ছিক" oninput="refreshInvoicePreview()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label class="field-label">ঠিকানা</label>
+          <input id="invAddress" placeholder="দোকানের ঠিকানা" oninput="refreshInvoicePreview()">
+        </div>
+        <div class="form-field">
+          <label class="field-label">ফোন</label>
+          <input id="invPhone" placeholder="ফোন নম্বর" oninput="refreshInvoicePreview()">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="printInvoice()">🖨️ প্রিন্ট করুন</button>
+        <button class="btn btn-success" onclick="downloadInvoice()">📄 PDF সেভ করুন</button>
+      </div>
+      <div class="inv-preview-wrap">
+        <div class="inv-preview-header">📋 পূর্বদর্শন</div>
+        <div class="inv-preview-body" id="liveInvPreview"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     BACKUP MODAL
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="backupModal">
+  <div class="modal-box">
+    <div class="modal-topbar">
+      <div class="modal-title">💾 ব্যাকআপ সিস্টেম</div>
+      <button class="modal-close" onclick="closeModal('backupModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="backup-grid">
+        <button class="btn btn-primary" onclick="exportBackup()">📥 ব্যাকআপ ডাউনলোড</button>
+        <label class="btn btn-ghost" style="cursor:pointer;">
+          📤 ব্যাকআপ রিস্টোর
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(this)">
+        </label>
+      </div>
+      <div class="info-box" style="margin-top:12px;">
+        <strong>📋 GitHub Pages দিয়ে ফ্রি হোস্টিং</strong>
+        <ol style="padding-left:18px;line-height:2.2;">
+          <li>github.com-এ নতুন repository তৈরি করুন</li>
+          <li>এই HTML ফাইলটি <code>index.html</code> নামে আপলোড করুন</li>
+          <li>Settings → Pages → Source: main branch চালু করুন</li>
+          <li>আপনার লিংক: <code>username.github.io/repo</code></li>
+          <li>যেকোনো ডিভাইসে এই লিংকে গেলেই সফটওয়্যার পাবেন</li>
+        </ol>
+        <div class="highlight-box">
+          ⚡ ডেটা সিঙ্ক: এক ডিভাইসে Export → অন্য ডিভাইসে Import করুন
+        </div>
+      </div>
+      <div id="backupHistorySection"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden print area -->
+<div id="printArea"></div>
+
+<!-- Toast Rack -->
+<div id="toastRack"></div>
+
+<!-- Install Banner -->
+<div id="installBanner">
+  <div class="ib-text">
+    📱 হোম স্ক্রিনে অ্যাপ ইন্সটল করুন
+    <small>অফলাইনেও ব্যবহার করুন — একদম বিনামূল্যে</small>
+  </div>
+  <button class="ib-btn-install" onclick="installPWA()">ইন্সটল করুন</button>
+  <button class="ib-btn-close" onclick="dismissInstall()">✕</button>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════
+   STATE — same as original
+═══════════════════════════════════════════ */
+let products = JSON.parse(localStorage.getItem("backup")) || [];
+let editId = null;
+// TASK 2: Restore billCart from localStorage so it survives page refresh
+let billCart = JSON.parse(localStorage.getItem("billCart")) || [];
+let selectedBillProduct = null;
+let currentMode = 'weight'; // 'weight' | 'price'
+let deferredPrompt = null;
+let invoiceCounter = parseInt(localStorage.getItem('invoiceCounter') || '1000');
+
+/* ═══════════════════════════════════════════
+   DOM REFS — all original + new
+═══════════════════════════════════════════ */
+const nameInput   = document.getElementById("name");
+const unitInput   = document.getElementById("unit");
+const priceInput  = document.getElementById("price");
+const search      = document.getElementById("search");
+const list        = document.getElementById("list");
+const mainBtn     = document.getElementById("mainBtn");
+const billSearch  = document.getElementById("billSearch");
+const billSearchResults = document.getElementById("billSearchResults");
+const billQty     = document.getElementById("billQty");
+const billBudget  = document.getElementById("billBudget");
+const billItems   = document.getElementById("billItems");
+const grandTotal  = document.getElementById("grandTotal");
+
+/* ═══════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════ */
+// Original bnToEn — unchanged
+function bnToEn(text){
+  const map={'০':'0','১':'1','২':'2','৩':'3','৪':'4','৫':'5','৬':'6','৭':'7','৮':'8','৯':'9'};
+  return String(text).replace(/[০-৯]/g,d=>map[d]);
+}
+// Original normalize — unchanged
+function normalize(t){ return String(t).toLowerCase().trim().replace(/\s+/g," "); }
+
+function cleanPrice(p){
+  return parseFloat(bnToEn(String(p).trim()).replace(/[^0-9.]/g,''));
+}
+
+function toast(msg, type='ok'){
+  const rack = document.getElementById('toastRack');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  rack.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
+
+function nowStr(){
+  return new Date().toLocaleDateString('bn-BD',{day:'numeric',month:'short',year:'numeric'})
+    + ' ' + new Date().toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* ═══════════════════════════════════════════
+   SAVE — original logic preserved + billCart persistence added (TASK 2)
+═══════════════════════════════════════════ */
+function saveData(){
+  localStorage.setItem("backup", JSON.stringify(products));
+  // TASK 2: also persist billCart so it survives refresh
+  localStorage.setItem("billCart", JSON.stringify(billCart));
+  renderData();
+  renderBill();
+  updateStats();
+}
+
+/* ═══════════════════════════════════════════
+   POS — PRODUCT MANAGEMENT
+   Original functions preserved exactly,
+   only UI output upgraded
+═══════════════════════════════════════════ */
+function handleAction(){
+  let name  = nameInput.value.trim();
+  let unit  = unitInput.value;
+  let price = priceInput.value.trim();
+  if(!name || !price){ toast("নাম ও দাম দিন", 'err'); return; }
+
+  if(editId === null){
+    let exist = products.find(p=>p.name===name);
+    if(exist){ if(!confirm(`${name} ইতিমধ্যে আছে। আবার যোগ করতে চান?`)) return; }
+  }
+
+  if(editId !== null){
+    let index = products.findIndex(p=>p.id===editId);
+    products[index] = {id:editId, name, unit, price};
+    editId = null;
+    mainBtn.innerText = "➕ পণ্য যোগ করুন";
+    document.getElementById('cancelBtn').style.display = 'none';
+    toast("পণ্য আপডেট হয়েছে ✅");
+  } else {
+    products.push({id:Date.now(), name, unit, price});
+    toast("পণ্য যোগ হয়েছে ✅");
+  }
+
+  nameInput.value = "";
+  priceInput.value = "";
+  saveData();
+}
+
+// Original editProduct — logic unchanged
+function editProduct(id){
+  let p = products.find(x=>x.id===id);
+  nameInput.value  = p.name;
+  unitInput.value  = p.unit;
+  priceInput.value = p.price;
+  editId = id;
+  mainBtn.innerText = "✅ আপডেট করুন";
+  document.getElementById('cancelBtn').style.display = 'flex';
+  nameInput.focus();
+  nameInput.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function cancelEdit(){
+  editId = null;
+  nameInput.value = ''; priceInput.value = '';
+  mainBtn.innerText = "➕ পণ্য যোগ করুন";
+  document.getElementById('cancelBtn').style.display = 'none';
+}
+
+// Original deleteProduct — logic unchanged
+function deleteProduct(id){
+  if(confirm("এই পণ্যটি ডিলিট করবেন?")){
+    products = products.filter(p=>p.id!==id);
+    saveData();
+    toast("পণ্য ডিলিট হয়েছে", 'info');
+  }
+}
+
+// Original renderData — logic unchanged, UI output improved
+function renderData(){
+  let q = normalize(search.value);
+  let filtered = products.filter(p=>normalize(p.name).includes(q));
+
+  document.getElementById('prodCount').textContent = `${filtered.length} টি পণ্য`;
+  document.getElementById('statVisible').textContent = filtered.length;
+
+  if(filtered.length === 0){
+    list.innerHTML = `<div class="empty-list">
+      <div class="e-icon">📦</div>
+      <div class="e-text">${q?'কোনো পণ্য পাওয়া যায়নি':'এখনো কোনো পণ্য যোগ হয়নি'}</div>
+    </div>`;
+    return;
+  }
+
+  let html = `<div class="prod-header">
+    <div>পণ্য</div><div style="text-align:center">ইউনিট</div>
+    <div style="text-align:center">দাম</div><div></div>
+  </div>`;
+
+  filtered.forEach(p=>{
+    const u1 = p.unit.split(" ")[0];
+    const u2 = p.unit.includes("(") ? p.unit.split("(")[1].replace(")","") : "";
+    html += `<div class="prod-row">
+      <div class="col-name">${p.name}</div>
+      <div class="col-unit"><div class="u1">${u1}</div>${u2?`<div>${u2}</div>`:''}</div>
+      <div class="col-price">৳ ${p.price}</div>
+      <div class="col-action">
+        <div class="icon-btn edit-btn" onclick="editProduct(${p.id})">✏️</div>
+        <div class="icon-btn delete-btn" onclick="deleteProduct(${p.id})">🗑️</div>
+      </div>
+    </div>`;
+  });
+
+  list.innerHTML = html;
+}
+
+/* ═══════════════════════════════════════════
+   BILL POPUP TOGGLE — original toggleBillPanel preserved
+═══════════════════════════════════════════ */
+function toggleBillPanel(){
+  const box = document.getElementById('billBox');
+  box.classList.toggle('show');
+  if(box.classList.contains('show')){
+    document.getElementById('billDateStr').textContent = nowStr();
+    billSearch.focus();
+  }
+}
+
+/* ═══════════════════════════════════════════
+   BILL MODE TOGGLE — NEW
+═══════════════════════════════════════════ */
+function setMode(m){
+  currentMode = m;
+  document.getElementById('tabWeight').className = 'mode-tab' + (m==='weight'?' active':'');
+  document.getElementById('tabPrice').className  = 'mode-tab' + (m==='price'?' active':'');
+  document.getElementById('panelWeight').style.display = m==='weight' ? 'block' : 'none';
+  document.getElementById('panelPrice').style.display  = m==='price'  ? 'block' : 'none';
+  // Clear previous calc info
+  const cw = document.getElementById('calcInfoWeight');
+  const cb = document.getElementById('calcInfoBudget');
+  cw.className = 'calc-info'; cw.textContent = '';
+  cb.className = 'calc-info green'; cb.textContent = '';
+  billQty.value = ''; billBudget.value = '';
+}
+
+/* ═══════════════════════════════════════════
+   BILL — PRODUCT SEARCH
+   Original searchBillProducts logic — unchanged
+═══════════════════════════════════════════ */
+function searchBillProducts(){
+  let q = normalize(billSearch.value);
+  if(!q){ billSearchResults.style.display='none'; billSearchResults.innerHTML=''; return; }
+
+  let matches = products.filter(p=>normalize(p.name).includes(q));
+  if(!matches.length){ billSearchResults.style.display='none'; return; }
+
+  billSearchResults.style.display = 'block';
+  billSearchResults.innerHTML = matches.map(p=>
+    `<div class="bill-search-item" onclick="selectBillProduct(${p.id})">
+      <span>${p.name}</span>
+      <span class="bsi-price">৳${p.price}/${p.unit.split(' ')[0]}</span>
+    </div>`
+  ).join('');
+  // TASK 3: prevent mousedown on any result from bubbling to the document
+  // outside-click handler, which would close the popup before onclick fires
+  billSearchResults.onmousedown = e => e.stopPropagation();
+}
+
+// Original selectBillProduct — logic unchanged
+function selectBillProduct(id){
+  selectedBillProduct = products.find(p=>p.id===id);
+  billSearch.value = selectedBillProduct.name;
+  billSearchResults.style.display = 'none';
+  billSearchResults.innerHTML = '';
+  // Trigger calc for whichever mode is active
+  if(currentMode==='weight') calcFromQty();
+  else calcFromBudget();
+}
+
+/* ═══════════════════════════════════════════
+   MODE A — quantity/weight → price
+   Original logic — unchanged
+═══════════════════════════════════════════ */
+function calcFromQty(){
+  const el = document.getElementById('calcInfoWeight');
+  if(!selectedBillProduct || !billQty.value){ el.className='calc-info'; el.textContent=''; return; }
+  const qty = parseFloat(billQty.value);
+  const unitPrice = cleanPrice(selectedBillProduct.price);
+  if(isNaN(qty)||isNaN(unitPrice)||qty<=0){ el.className='calc-info'; el.textContent=''; return; }
+  const total = qty * unitPrice;
+  el.className = 'calc-info show';
+  el.textContent = `💡 ${qty} × ৳${unitPrice} = ৳${total.toFixed(2)}`;
+}
+
+/* ═══════════════════════════════════════════
+   MODE B — budget/price → auto weight (NEW FEATURE)
+═══════════════════════════════════════════ */
+function calcFromBudget(){
+  const el = document.getElementById('calcInfoBudget');
+  if(!selectedBillProduct || !billBudget.value){ el.className='calc-info green'; el.textContent=''; return; }
+  const budget = parseFloat(billBudget.value);
+  const unitPrice = cleanPrice(selectedBillProduct.price);
+  if(isNaN(budget)||isNaN(unitPrice)||budget<=0||unitPrice<=0){ el.className='calc-info green'; el.textContent=''; return; }
+  const autoQty = budget / unitPrice;
+  const unitLabel = selectedBillProduct.unit.split(' ')[0];
+  el.className = 'calc-info green show';
+  el.textContent = `⚖️ ৳${budget} ÷ ৳${unitPrice}/${unitLabel} = ${autoQty.toFixed(3)} ${unitLabel}`;
+  // Write calculated qty into hidden slot so addSelectedToBill can use it
+  billQty.value = autoQty.toFixed(3);
+}
+
+/* ═══════════════════════════════════════════
+   ADD TO BILL — original logic exactly preserved
+═══════════════════════════════════════════ */
+function addSelectedToBill(){
+  let qty = Number(billQty.value);
+  if(!selectedBillProduct){ toast("পণ্য সিলেক্ট করুন", 'err'); return; }
+  if(!qty || qty<=0){ toast("পরিমাণ দিন", 'err'); return; }
+
+  let existIndex = billCart.findIndex(item=>item.name===selectedBillProduct.name);
+  if(existIndex !== -1){
+    if(!confirm(`${selectedBillProduct.name} ইতিমধ্যে আছে। আবার যোগ করতে চান?`)) return;
+  }
+
+  let priceText = String(selectedBillProduct.price).trim();
+  priceText = bnToEn(priceText).replace(/[^0-9.]/g,'');
+  let cleanP = parseFloat(priceText);
+  if(isNaN(cleanP)){ toast("দামে সমস্যা আছে", 'err'); return; }
+
+  let total = qty * cleanP;
+  billCart.push({
+    name: selectedBillProduct.name,
+    qty,
+    total,
+    unitPrice: cleanP,
+    unit: selectedBillProduct.unit.split(' ')[0],
+    mode: currentMode
+  });
+
+  selectedBillProduct = null;
+  billSearch.value = '';
+  billQty.value = '';
+  billBudget.value = '';
+  document.getElementById('calcInfoWeight').className = 'calc-info';
+  document.getElementById('calcInfoWeight').textContent = '';
+  document.getElementById('calcInfoBudget').className = 'calc-info green';
+  document.getElementById('calcInfoBudget').textContent = '';
+
+  toast("বিলে যোগ হয়েছে ✅");
+  renderBill();
+}
+
+/* ═══════════════════════════════════════════
+   RENDER BILL — original logic exactly preserved
+═══════════════════════════════════════════ */
+function renderBill(){
+  const emptyState = document.getElementById('billEmptyState');
+  let totalSum = 0;
+
+  if(billCart.length === 0){
+    emptyState.style.display = 'block';
+    billItems.innerHTML = '';
+    grandTotal.textContent = '৳ 0';
+    document.getElementById('billBadgeTop').textContent = '0 আইটেম';
+    updateFab(0);
+    updateStats();
+    return;
+  }
+
+  emptyState.style.display = 'none';
+
+  billItems.innerHTML = billCart.map((item, index)=>{
+    totalSum += item.total;
+    const modeBadge = item.mode==='price'
+      ? `<span class="bi-mode-badge">বাজেট</span>`
+      : '';
+    return `<div class="bill-item-row">
+      <div class="bi-left">
+        <div class="bi-name">${item.name}${modeBadge}</div>
+        <div class="bi-meta">${item.qty} ${item.unit||''} × ৳${item.unitPrice} = ৳${item.total.toFixed(2)}</div>
+      </div>
+      <div class="bi-right">
+        <div class="bi-total">৳${item.total.toFixed(2)}</div>
+        <button class="bi-del" onclick="removeBillItem(${index})" title="সরান">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  grandTotal.textContent = `৳ ${totalSum.toFixed(2)}`;
+  const cnt = billCart.length;
+  document.getElementById('billBadgeTop').textContent = `${cnt} আইটেম`;
+  updateFab(cnt);
+  updateStats();
+}
+
+// Original removeBillItem — unchanged
+function removeBillItem(idx){ billCart.splice(idx,1); localStorage.setItem("billCart",JSON.stringify(billCart)); renderBill(); }
+
+// Original clearBill — unchanged
+function clearBill(){
+  if(billCart.length && !confirm("বিল ক্লিয়ার করবেন?")) return;
+  billCart = [];
+  localStorage.setItem("billCart",JSON.stringify(billCart));
+  renderBill();
+}
+
+/* ═══════════════════════════════════════════
+   STATS
+═══════════════════════════════════════════ */
+function updateStats(){
+  document.getElementById('statTotal').textContent = products.length;
+  document.getElementById('statBill').textContent  = billCart.length;
+}
+
+function updateFab(cnt){
+  const badge = document.getElementById('fabBadge');
+  if(cnt>0){ badge.textContent=cnt; badge.style.display='flex'; }
+  else badge.style.display='none';
+}
+
+/* ═══════════════════════════════════════════
+   INVOICE — Professional Print / PDF
+═══════════════════════════════════════════ */
+function buildInvoiceHTML(shop, customer, address, phone){
+  invoiceCounter++;
+  localStorage.setItem('invoiceCounter', invoiceCounter);
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('bn-BD',{year:'numeric',month:'long',day:'numeric'});
+  const timeStr = now.toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'});
+
+  let rows=''; let subtotal=0;
+  billCart.forEach((item,i)=>{
+    subtotal+=item.total;
+    rows+=`<tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;">${i+1}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;font-weight:600;">${item.name}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;text-align:right;">${item.qty} ${item.unit||''}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;text-align:right;">৳${item.unitPrice.toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;text-align:right;font-weight:700;">৳${item.total.toFixed(2)}</td>
+    </tr>`;
+  });
+
+  return `<div style="font-family:'Hind Siliguri',sans-serif;color:#0f172a;max-width:600px;margin:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:2px solid #0f172a;">
+      <div>
+        <div style="font-size:26px;font-weight:700;color:#0f172a;">${shop||'ছৈয়দ স্টোর'}</div>
+        ${address?`<div style="font-size:12px;color:#64748b;margin-top:3px;">📍 ${address}</div>`:''}
+        ${phone?`<div style="font-size:12px;color:#64748b;">📞 ${phone}</div>`:''}
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">ইনভয়েস নং</div>
+        <div style="font-size:20px;font-weight:700;font-family:monospace;color:#1d4ed8;">#${invoiceCounter}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px;">${dateStr}</div>
+        <div style="font-size:12px;color:#64748b;">${timeStr}</div>
+      </div>
+    </div>
+    ${customer?`<div style="margin-bottom:16px;padding:12px 14px;background:#f0f4ff;border-radius:10px;font-size:13px;border:1px solid #dde3f0;">
+      <strong>কাস্টমার:</strong> ${customer}
+    </div>`:''}
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <thead>
+        <tr style="background:#0f172a;color:#fff;">
+          <th style="padding:11px 12px;text-align:left;font-size:12px;border-radius:8px 0 0 0;">#</th>
+          <th style="padding:11px 12px;text-align:left;font-size:12px;">পণ্য</th>
+          <th style="padding:11px 12px;text-align:right;font-size:12px;">পরিমাণ</th>
+          <th style="padding:11px 12px;text-align:right;font-size:12px;">একক দাম</th>
+          <th style="padding:11px 12px;text-align:right;font-size:12px;border-radius:0 8px 0 0;">মোট</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+      <div style="min-width:240px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;color:#64748b;">
+          <span>সাব-টোটাল</span><span style="font-family:monospace;">৳${subtotal.toFixed(2)}</span>
+        </div>
+        <div style="border-top:2px solid #0f172a;margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;font-size:20px;font-weight:700;color:#16a34a;">
+          <span>মোট</span><span style="font-family:monospace;">৳${subtotal.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8;padding-top:16px;border-top:1px solid #e2e8f0;">
+      ধন্যবাদ আপনার কেনাকাটার জন্য 🙏 | ${shop||'ছৈয়দ স্টোর'} POS
+    </div>
+  </div>`;
+}
+
+function openInvoiceModal(){
+  if(billCart.length===0){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
+  refreshInvoicePreview();
+  openModal('invoiceModal');
+}
+
+function refreshInvoicePreview(){
+  const h = buildInvoiceHTML(
+    document.getElementById('invShop').value,
+    document.getElementById('invCustomer').value,
+    document.getElementById('invAddress').value,
+    document.getElementById('invPhone').value
+  );
+  document.getElementById('liveInvPreview').innerHTML = h;
+}
+
+// Original printBill logic preserved, enhanced with professional layout
+function printInvoice(){
+  const h = buildInvoiceHTML(
+    document.getElementById('invShop').value,
+    document.getElementById('invCustomer').value,
+    document.getElementById('invAddress').value,
+    document.getElementById('invPhone').value
+  );
+  const pw = window.open('','','width=800,height=700');
+  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>ইনভয়েস #${invoiceCounter}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}
+      @media print{body{padding:20px;}}
+    </style>
+    </head><body>${h}</body></html>`);
+  pw.document.close(); pw.focus();
+  setTimeout(()=>{ pw.print(); }, 700);
+}
+
+function downloadInvoice(){
+  const h = buildInvoiceHTML(
+    document.getElementById('invShop').value,
+    document.getElementById('invCustomer').value,
+    document.getElementById('invAddress').value,
+    document.getElementById('invPhone').value
+  );
+  const full = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>ইনভয়েস #${invoiceCounter}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;}</style>
+    </head><body>${h}</body></html>`;
+  const blob = new Blob([full],{type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`invoice-${invoiceCounter}.html`;
+  a.click(); URL.revokeObjectURL(url);
+  toast("ইনভয়েস সেভ হয়েছে ✅");
+}
+
+/* ═══════════════════════════════════════════
+   BACKUP SYSTEM
+═══════════════════════════════════════════ */
+function exportBackup(){
+  const data = {
+    version:'3.0',
+    exportDate:new Date().toISOString(),
+    products, billCart, invoiceCounter
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url;
+  a.download=`choyed-pos-backup-${new Date().toLocaleDateString('en-CA')}.json`;
+  a.click(); URL.revokeObjectURL(url);
+
+  // Save history
+  const hist = JSON.parse(localStorage.getItem('bkHist')||'[]');
+  hist.unshift({d:new Date().toISOString(), n:products.length});
+  hist.splice(5);
+  localStorage.setItem('bkHist',JSON.stringify(hist));
+  renderBackupHistory();
+  toast("ব্যাকআপ ডাউনলোড হয়েছে ✅");
+}
+
+function importBackup(input){
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.products) throw new Error('invalid');
+      if(!confirm(`${data.products.length} টি পণ্য রিস্টোর করবেন? বর্তমান ডেটা মুছে যাবে।`)) return;
+      products = data.products;
+      if(data.invoiceCounter) invoiceCounter = data.invoiceCounter;
+      saveData();
+      toast(`${products.length} টি পণ্য রিস্টোর হয়েছে ✅`);
+    } catch(e){ toast("ব্যাকআপ ফাইলে সমস্যা", 'err'); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+function renderBackupHistory(){
+  const hist = JSON.parse(localStorage.getItem('bkHist')||'[]');
+  const el = document.getElementById('backupHistorySection');
+  if(!hist.length){ el.innerHTML=''; return; }
+  el.innerHTML = `<div style="font-size:12px;color:var(--muted);font-weight:600;margin:12px 0 6px;">সাম্প্রতিক ব্যাকআপ</div>` +
+    hist.map(h=>`<div style="font-size:12px;color:var(--muted2);padding:6px 0;border-bottom:1px solid var(--border);">
+      📅 ${new Date(h.d).toLocaleString('bn-BD')} — ${h.n} টি পণ্য
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════
+   MODAL HELPERS
+═══════════════════════════════════════════ */
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function openBackupModal(){ renderBackupHistory(); openModal('backupModal'); }
+
+document.querySelectorAll('.modal-overlay').forEach(o=>{
+  o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+
+/* ═══════════════════════════════════════════
+   PWA — SERVICE WORKER
+═══════════════════════════════════════════ */
+const SW_CODE = `
+const CACHE='choyed-pos-v3';
+self.addEventListener('install',e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll([location.pathname||'/'])).then(()=>self.skipWaiting()));
+});
+self.addEventListener('activate',e=>{
+  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+});
+self.addEventListener('fetch',e=>{
+  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+    const clone=res.clone();
+    caches.open(CACHE).then(c=>c.put(e.request,clone));
+    return res;
+  }).catch(()=>caches.match('/'))));
+});
+`;
+
+function registerSW(){
+  if(!('serviceWorker' in navigator)) return;
+  const blob = new Blob([SW_CODE],{type:'application/javascript'});
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url,{scope:'/'}).catch(()=>{});
+}
+
+function injectManifest(){
+  const m={
+    name:"ছৈয়দ স্টোর POS",
+    short_name:"ছৈয়দ POS",
+    description:"Professional POS Billing System",
+    start_url:"./",display:"standalone",
+    background_color:"#f0f4ff",theme_color:"#1e40af",
+    icons:[{
+      src:"data:image/svg+xml;base64,"+btoa(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%231e40af'/><text y='360' x='256' text-anchor='middle' font-size='280'>🛒</text></svg>`),
+      sizes:"512x512",type:"image/svg+xml"
+    }]
+  };
+  const blob=new Blob([JSON.stringify(m)],{type:'application/json'});
+  document.getElementById('pwaManifest').href=URL.createObjectURL(blob);
+}
+
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); deferredPrompt=e;
+  if(!localStorage.getItem('pwaInstalled'))
+    setTimeout(()=>document.getElementById('installBanner').classList.add('show'),4000);
+});
+
+function installPWA(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r=>{
+    if(r.outcome==='accepted'){ localStorage.setItem('pwaInstalled','1'); toast("অ্যাপ ইন্সটল হয়েছে 🎉"); }
+    document.getElementById('installBanner').classList.remove('show');
+    deferredPrompt=null;
+  });
+}
+function dismissInstall(){
+  document.getElementById('installBanner').classList.remove('show');
+  localStorage.setItem('pwaInstalled','1');
+}
+
+/* ═══════════════════════════════════════════
+   KEYBOARD
+═══════════════════════════════════════════ */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    document.querySelectorAll('.modal-overlay.open').forEach(o=>o.classList.remove('open'));
+    document.getElementById('billBox').classList.remove('show');
+  }
+});
+
+// TASK 3 FIX: Use mousedown (fires before blur/click) and explicitly exclude
+// the search results container so clicking a result never closes the popup.
+document.addEventListener('mousedown',e=>{
+  const billBox = document.getElementById('billBox');
+  const fabBtn  = document.getElementById('floatingBillBtn');
+  const results = document.getElementById('billSearchResults');
+  if(billBox.classList.contains('show')
+    && !billBox.contains(e.target)
+    && !fabBtn.contains(e.target)
+    && !results.contains(e.target)){
+    billBox.classList.remove('show');
+  }
+});
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+(function init(){
+  injectManifest();
+  registerSW();
+  setMode('weight');    // start in original mode
+  renderData();
+  renderBill();
+  updateStats();
+})();
+</script>
+</body>
+</html>
