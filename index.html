@@ -123,6 +123,42 @@ body{
   .topbar-search-wrap{max-width:140px;}
 }
 
+/* Fix 3 — Topbar instant search dropdown */
+#topSearchDrop{
+  display:none;
+  position:fixed;
+  top:60px;
+  left:0;right:0;
+  z-index:200;
+  background:#fff;
+  border-bottom:2px solid var(--primary);
+  box-shadow:0 8px 24px rgba(15,23,42,.15);
+  max-height:60vh;
+  overflow-y:auto;
+}
+#topSearchDrop.open{display:block;}
+.tsd-header{
+  padding:8px 16px;
+  background:var(--primary);
+  color:#fff;
+  font-size:12px;font-weight:700;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.tsd-item{
+  display:grid;
+  grid-template-columns:1fr 90px 90px;
+  gap:8px;align-items:center;
+  padding:11px 16px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  transition:background .12s;
+}
+.tsd-item:hover{background:#f0f4ff;}
+.tsd-item:last-child{border-bottom:none;}
+.tsd-name{font-size:14px;font-weight:700;color:var(--text);}
+.tsd-unit{font-size:12px;color:var(--muted);text-align:center;}
+.tsd-price{font-size:14px;font-weight:700;color:var(--success);text-align:right;}
+
 /* ═══════════════════════════════════════════
    MAIN CONTAINER — POS (PRIMARY / ALWAYS VISIBLE)
 ═══════════════════════════════════════════ */
@@ -599,6 +635,112 @@ input::placeholder{color:var(--muted2);}
 }
 
 /* ═══════════════════════════════════════════
+   SHORT LIST — Floating Button + Popup (Part 5)
+═══════════════════════════════════════════ */
+#shortListBtn{
+  position:fixed;
+  bottom:100px;right:20px;
+  width:52px;height:52px;
+  border-radius:50%;border:none;
+  background:linear-gradient(135deg,#7c3aed,#6d28d9);
+  color:#fff;font-size:22px;
+  box-shadow:0 6px 24px rgba(124,58,237,0.4),0 2px 8px rgba(0,0,0,0.12);
+  cursor:pointer;z-index:997;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .2s,box-shadow .2s;
+}
+#shortListBtn:hover{transform:scale(1.07);}
+#shortListBtn:active{transform:scale(0.96);}
+#slBadge{
+  position:absolute;top:-4px;right:-4px;
+  min-width:18px;height:18px;border-radius:9px;
+  background:var(--warning);color:#fff;
+  font-size:10px;font-weight:700;
+  display:none;align-items:center;justify-content:center;
+  padding:0 4px;border:2px solid #fff;
+}
+.shortlist-box{
+  display:none;
+  position:fixed;
+  bottom:164px;right:20px;
+  width:340px;
+  max-width:calc(100vw - 24px);
+  max-height:calc(100vh - 200px);
+  border-radius:20px;
+  background:#fff;
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-bill);
+  z-index:996;
+  overflow:hidden;
+  flex-direction:column;
+  animation:popIn .22s cubic-bezier(.34,1.56,.64,1);
+}
+.shortlist-box.show{display:flex;}
+.sl-header{
+  background:linear-gradient(135deg,#4c1d95,#5b21b6);
+  color:#fff;padding:13px 16px;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.sl-header-left{display:flex;align-items:center;gap:9px;}
+.sl-header-title{font-size:15px;font-weight:700;}
+.sl-header-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;}
+.sl-close-btn{
+  width:28px;height:28px;border-radius:8px;border:none;
+  background:rgba(255,255,255,.15);color:#fff;font-size:15px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+.sl-body{flex:1;overflow-y:auto;padding:12px 14px;}
+.sl-body::-webkit-scrollbar{width:4px;}
+.sl-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.sl-add-row{display:grid;grid-template-columns:1fr 80px;gap:6px;margin-bottom:10px;}
+.sl-add-note{grid-column:1/-1;}
+.sl-add-btn{
+  padding:8px;border:none;border-radius:9px;
+  background:#7c3aed;color:#fff;font-size:13px;font-weight:600;
+  cursor:pointer;font-family:var(--font);
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  grid-column:1/-1;
+  transition:filter .2s;
+}
+.sl-add-btn:hover{filter:brightness(1.1);}
+.sl-divider{height:1px;background:var(--border);margin:8px 0;}
+.sl-item{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:10px 0;border-bottom:1px solid var(--border);
+}
+.sl-item:last-child{border-bottom:none;}
+.sl-item-check{
+  width:20px;height:20px;border-radius:6px;border:2px solid var(--border2);
+  background:transparent;cursor:pointer;flex-shrink:0;margin-top:1px;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+  transition:all .15s;
+}
+.sl-item-check.done{background:#7c3aed;border-color:#7c3aed;color:#fff;}
+.sl-item-body{flex:1;min-width:0;}
+.sl-item-name{font-size:14px;font-weight:600;line-height:1.3;}
+.sl-item-name.done-text{text-decoration:line-through;color:var(--muted2);}
+.sl-item-meta{font-size:11px;color:var(--muted2);margin-top:2px;}
+.sl-item-del{
+  width:24px;height:24px;border-radius:6px;border:1px solid #fecaca;
+  background:transparent;color:var(--danger);font-size:11px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.sl-footer{
+  padding:10px 14px;border-top:1px solid var(--border);
+  background:#fafbff;flex-shrink:0;
+  display:flex;gap:8px;
+}
+.sl-footer-btn{
+  flex:1;padding:8px;border:none;border-radius:9px;
+  font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);
+}
+.sl-footer-btn.clear{background:transparent;border:1px solid var(--border);color:var(--muted);}
+.sl-footer-btn.clear:hover{border-color:var(--danger);color:var(--danger);}
+.sl-history-section{margin-top:8px;}
+.sl-history-date{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:6px 0 4px;border-top:1px solid var(--border);}
+.sl-empty{text-align:center;padding:24px 14px;color:var(--muted2);font-size:13px;}
+
+/* ═══════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════ */
 @media(max-width:520px){
@@ -611,7 +753,14 @@ input::placeholder{color:var(--muted2);}
     border-radius:20px 20px 0 0;
     max-height:82vh;
   }
+  .shortlist-box{
+    bottom:0;right:0;left:0;
+    width:100%;max-width:100%;
+    border-radius:20px 20px 0 0;
+    max-height:80vh;
+  }
   #floatingBillBtn{bottom:16px;right:16px;}
+  #shortListBtn{bottom:90px;right:16px;}
 }
 
 @media print{
@@ -637,15 +786,20 @@ input::placeholder{color:var(--muted2);}
   <div class="topbar-actions">
     <div class="topbar-search-wrap">
       <span class="topbar-search-icon">🔍</span>
-      <input id="search" placeholder="পণ্য খুঁজুন..." onkeyup="renderData()" autocomplete="off">
+      <input id="search" placeholder="পণ্য খুঁজুন..." onkeyup="renderData();renderTopSearch();" autocomplete="off" name="pos-search-x" readonly onfocus="this.removeAttribute('readonly');renderTopSearch();">
     </div>
     <button class="topbar-btn" onclick="openBackupModal()">💾 ব্যাকআপ</button>
   </div>
-</div>
+</div><!-- /topbar -->
 
-<!-- ═══════════════════════════════════════════
-     MAIN POS CONTAINER — PRIMARY / ALWAYS VISIBLE
-═══════════════════════════════════════════ -->
+<!-- Fix 3: Instant search results dropdown (appears directly below topbar) -->
+<div id="topSearchDrop">
+  <div class="tsd-header">
+    <span id="tsdCount">0 টি পণ্য পাওয়া গেছে</span>
+    <span style="cursor:pointer;opacity:.8;" onclick="closeTopSearch()">✕ বন্ধ করুন</span>
+  </div>
+  <div id="tsdList"></div>
+</div>
 <div class="container">
 
   <!-- Stats Strip -->
@@ -718,6 +872,64 @@ input::placeholder{color:var(--muted2);}
 
 
 <!-- ═══════════════════════════════════════════
+     SHORT LIST FLOATING BUTTON (Part 5)
+═══════════════════════════════════════════ -->
+<button id="shortListBtn" onclick="toggleShortList()" title="শর্ট লিস্ট">
+  📝
+  <span id="slBadge">0</span>
+</button>
+
+<!-- SHORT LIST POPUP -->
+<div class="shortlist-box" id="shortListBox">
+  <div class="sl-header">
+    <div class="sl-header-left">
+      <span style="font-size:20px;">📝</span>
+      <div>
+        <div class="sl-header-title">শর্ট লিস্ট</div>
+        <div class="sl-header-sub">কেনার তালিকা / Purchase Reminder</div>
+      </div>
+    </div>
+    <button class="sl-close-btn" onclick="toggleShortList()">✕</button>
+  </div>
+  <div class="sl-body">
+    <!-- Add from existing products -->
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">পণ্য যোগ করুন</div>
+    <div style="position:relative;">
+      <input id="slSearch" placeholder="পণ্য টাইপ করুন বা নতুন লিখুন..." oninput="searchSlProducts()" autocomplete="off">
+      <div id="slSearchResults" style="display:none;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;max-height:130px;overflow-y:auto;margin-top:3px;"></div>
+    </div>
+    <div class="sl-add-row" style="margin-top:8px;">
+      <input id="slQtyInput" type="number" placeholder="পরিমাণ (ঐচ্ছিক)" min="0" step="any">
+      <select id="slUnitInput">
+        <option>KG</option><option>Litre</option><option>Piece</option><option>Packet</option><option>Dozen</option><option>Gram</option>
+      </select>
+    </div>
+    <input id="slNote" placeholder="নোট (ঐচ্ছিক)" style="margin-top:6px;">
+    <button class="sl-add-btn" onclick="addToShortList()" style="margin-top:8px;">➕ তালিকায় যোগ করুন</button>
+
+    <div class="sl-divider"></div>
+
+    <!-- List Items -->
+    <div id="slItems"></div>
+  </div>
+  <div class="sl-footer">
+    <button class="sl-footer-btn clear" onclick="clearDoneItems()">✅ সম্পন্ন মুছুন</button>
+    <button class="sl-footer-btn clear" onclick="saveShortListAsHistory()" style="color:var(--primary);border-color:var(--primary);">💾 হিস্ট্রিতে সেভ</button>
+    <button class="sl-footer-btn clear" onclick="exportShortListPDF()" style="color:#7c3aed;border-color:#7c3aed;">📄 PDF</button>
+    <button class="sl-footer-btn clear" onclick="clearAllShortList()" style="color:var(--danger);">🗑️ মুছুন</button>
+  </div>
+  <!-- FIX 3: Short list saved history section -->
+  <div id="slHistorySection" style="border-top:1px solid var(--border);background:#f8fafc;flex-shrink:0;display:none;max-height:200px;overflow-y:auto;">
+    <div style="padding:8px 14px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">📚 সেভ করা তালিকা</span>
+      <button onclick="toggleSlHistory()" id="slHistoryToggleBtn"
+        style="font-size:11px;color:var(--primary);background:none;border:none;cursor:pointer;font-family:var(--font);font-weight:600;">লুকান</button>
+    </div>
+    <div id="slHistoryList" style="padding:0 14px 10px;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
      FLOATING BILL BUTTON — WhatsApp Style
 ═══════════════════════════════════════════ -->
 <button id="floatingBillBtn" onclick="toggleBillPanel()" title="বিল স্লিপ খুলুন">
@@ -746,8 +958,20 @@ input::placeholder{color:var(--muted2);}
     </div>
   </div>
 
-  <!-- Scrollable Body -->
-  <div class="bill-body">
+  <!-- FIX 2: Quick-access tab strip -->
+  <div style="display:flex;border-bottom:1px solid var(--border);background:#f8fafc;flex-shrink:0;">
+    <button id="billTabBill" onclick="switchBillTab('bill')"
+      style="flex:1;padding:9px 8px;border:none;background:transparent;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);color:var(--primary);border-bottom:2px solid var(--primary);transition:all .15s;">
+      🧾 বর্তমান বিল
+    </button>
+    <button id="billTabSaved" onclick="switchBillTab('saved')"
+      style="flex:1;padding:9px 8px;border:none;background:transparent;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;">
+      📋 সংরক্ষিত
+    </button>
+  </div>
+
+  <!-- Scrollable Body — BILL PANEL -->
+  <div class="bill-body" id="billPanelBody">
 
     <!-- MODE TOGGLE -->
     <div class="mode-toggle-wrap">
@@ -795,10 +1019,19 @@ input::placeholder{color:var(--muted2);}
       <div id="billItems"></div>
     </div>
 
-  </div><!-- /bill-body -->
+  </div><!-- /billPanelBody -->
+
+  <!-- FIX 2: Saved Invoices Quick Panel (inside bill popup) -->
+  <div class="bill-body" id="savedPanelBody" style="display:none;">
+    <div style="padding:10px 14px;">
+      <input id="billBoxInvSearch" placeholder="🔍 নাম, ফোন বা #নম্বর..." oninput="renderBillBoxInvoices()"
+        style="font-size:13px;padding:9px 12px;">
+    </div>
+    <div id="billBoxInvList" style="padding:0 14px 12px;"></div>
+  </div>
 
   <!-- Bill Footer -->
-  <div class="bill-footer">
+  <div class="bill-footer" id="billFooterMain">
     <div class="bill-total-row">
       <div class="bill-total-label">মোট পরিশোধ</div>
       <div class="bill-grand" id="grandTotal">৳ 0</div>
@@ -816,40 +1049,228 @@ input::placeholder{color:var(--muted2);}
      INVOICE MODAL
 ═══════════════════════════════════════════ -->
 <div class="modal-overlay" id="invoiceModal">
-  <div class="modal-box">
+  <div class="modal-box" style="max-width:620px;">
     <div class="modal-topbar">
-      <div class="modal-title">🧾 প্রফেশনাল ইনভয়েস</div>
-      <button class="modal-close" onclick="closeModal('invoiceModal')">✕</button>
+      <div class="modal-title">🧾 ইনভয়েস তৈরি করুন</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="topbar-btn" style="background:var(--primary);border-color:var(--primary);color:#fff;font-size:11px;" onclick="openSavedInvoicesModal()">📋 সংরক্ষিত</button>
+        <button class="modal-close" onclick="closeModal('invoiceModal')">✕</button>
+      </div>
     </div>
     <div class="modal-body">
-      <div class="form-row">
-        <div class="form-field">
-          <label class="field-label">দোকানের নাম</label>
-          <input id="invShop" value="ছৈয়দ স্টোর" oninput="refreshInvoicePreview()">
-        </div>
-        <div class="form-field">
-          <label class="field-label">কাস্টমারের নাম</label>
-          <input id="invCustomer" placeholder="ঐচ্ছিক" oninput="refreshInvoicePreview()">
-        </div>
+
+      <!-- Store header (always fixed, Part 4) -->
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:12px 14px;font-size:13px;">
+        <div style="font-weight:700;font-size:15px;color:var(--text);">মো: ছৈয়দ স্টোর</div>
+        <div style="color:var(--muted);margin-top:2px;">📍 ধলারমার মসজিদ, উত্তর সরেঙ্গা, আনোয়ারা, চট্টগ্রাম</div>
+        <div style="color:var(--muted);">📞 ০১৮১৩৮৮২৫০৪</div>
       </div>
-      <div class="form-row">
-        <div class="form-field">
+
+      <!-- Customer Info (Part 3) -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">কাস্টমার তথ্য</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">কাস্টমারের নাম</label>
+            <input id="invCustomer" placeholder="নাম লিখুন" oninput="refreshInvoicePreview()">
+          </div>
+          <div class="form-field">
+            <label class="field-label">ফোন নম্বর</label>
+            <input id="invCustPhone" placeholder="01XXXXXXXXX" oninput="refreshInvoicePreview()">
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:0;">
           <label class="field-label">ঠিকানা</label>
-          <input id="invAddress" placeholder="দোকানের ঠিকানা" oninput="refreshInvoicePreview()">
-        </div>
-        <div class="form-field">
-          <label class="field-label">ফোন</label>
-          <input id="invPhone" placeholder="ফোন নম্বর" oninput="refreshInvoicePreview()">
+          <input id="invCustAddress" placeholder="কাস্টমারের ঠিকানা" oninput="refreshInvoicePreview()">
         </div>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="printInvoice()">🖨️ প্রিন্ট করুন</button>
-        <button class="btn btn-success" onclick="downloadInvoice()">📄 PDF সেভ করুন</button>
+
+      <!-- Payment Info -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">পেমেন্ট তথ্য</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">পরিশোধিত (৳)</label>
+            <input id="invPaid" type="number" placeholder="0" min="0" step="any" oninput="syncDue();refreshInvoicePreview()">
+          </div>
+          <div class="form-field">
+            <label class="field-label">বাকি (৳)</label>
+            <input id="invDue" type="number" placeholder="স্বয়ংক্রিয়" min="0" step="any" oninput="refreshInvoicePreview()">
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:0;">
+          <label class="field-label">স্ট্যাটাস</label>
+          <select id="invStatus" onchange="refreshInvoicePreview()">
+            <option value="পরিশোধিত">✅ পরিশোধিত (Paid)</option>
+            <option value="বাকি">❌ বাকি (Due)</option>
+            <option value="আংশিক">⚠️ আংশিক (Partial)</option>
+          </select>
+        </div>
       </div>
+
+      <!-- Action Buttons -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <button class="btn btn-primary" onclick="printInvoice()">🖨️ প্রিন্ট</button>
+        <button class="btn btn-success" onclick="downloadInvoice()">📄 PDF সেভ</button>
+        <button class="btn" style="background:#7c3aed;color:#fff;" onclick="printAndSaveInvoice()">💾 প্রিন্ট ও সেভ</button>
+      </div>
+
+      <!-- Live Preview -->
       <div class="inv-preview-wrap">
         <div class="inv-preview-header">📋 পূর্বদর্শন</div>
         <div class="inv-preview-body" id="liveInvPreview"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     INVOICE PREVIEW MODAL (Preview-first fix)
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="previewInvoiceModal">
+  <div class="modal-box" style="max-width:640px;">
+    <div class="modal-topbar">
+      <div class="modal-title">🧾 ইনভয়েস বিস্তারিত</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="topbar-btn" id="previewEditBtn"
+          style="background:var(--primary);border-color:var(--primary);color:#fff;font-size:11px;"
+          onclick="openEditFromPreview()">✏️ এডিট করুন</button>
+        <button class="modal-close" onclick="closeModal('previewInvoiceModal')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="previewInvoiceContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SHORTLIST PREVIEW MODAL (Preview-first fix)
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="previewSlModal">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-topbar">
+      <div class="modal-title">📝 শর্ট লিস্ট বিস্তারিত</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="topbar-btn" id="previewSlEditBtn"
+          style="background:#7c3aed;border-color:#7c3aed;color:#fff;font-size:11px;"
+          onclick="loadSlFromPreview()">✏️ এডিট করুন</button>
+        <button class="modal-close" onclick="closeModal('previewSlModal')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div id="previewSlContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     EDIT SAVED INVOICE MODAL (Fix 1)
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="editInvoiceModal">
+  <div class="modal-box" style="max-width:640px;">
+    <div class="modal-topbar">
+      <div class="modal-title">✏️ ইনভয়েস সম্পাদনা</div>
+      <button class="modal-close" onclick="closeModal('editInvoiceModal')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Store header (read-only display) -->
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--muted);">
+        <span style="font-weight:700;color:var(--text);">মো: ছৈয়দ স্টোর</span> &nbsp;|&nbsp; ধলারমার মসজিদ, আনোয়ারা, চট্টগ্রাম &nbsp;|&nbsp; ০১৮১৩৮৮২৫০৪
+      </div>
+
+      <!-- Customer fields -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">কাস্টমার তথ্য</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">কাস্টমারের নাম</label>
+            <input id="eiCustomer" placeholder="নাম লিখুন">
+          </div>
+          <div class="form-field">
+            <label class="field-label">ফোন নম্বর</label>
+            <input id="eiPhone" placeholder="01XXXXXXXXX">
+          </div>
+        </div>
+        <div class="form-field" style="margin-bottom:0;">
+          <label class="field-label">ঠিকানা</label>
+          <input id="eiAddress" placeholder="ঠিকানা">
+        </div>
+      </div>
+
+      <!-- Items editor -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">পণ্য তালিকা</div>
+        <div id="eiItemsList"></div>
+        <!-- Add item row -->
+        <div style="display:grid;grid-template-columns:1fr 80px 90px auto;gap:6px;margin-top:10px;align-items:end;">
+          <div>
+            <label class="field-label">পণ্যের নাম</label>
+            <input id="eiAddName" placeholder="পণ্যের নাম">
+          </div>
+          <div>
+            <label class="field-label">পরিমাণ</label>
+            <input id="eiAddQty" type="number" placeholder="qty" min="0" step="any">
+          </div>
+          <div>
+            <label class="field-label">দাম (৳)</label>
+            <input id="eiAddPrice" type="number" placeholder="price" min="0" step="any">
+          </div>
+          <div>
+            <label class="field-label">&nbsp;</label>
+            <button onclick="eiAddItem()" class="btn btn-success" style="padding:11px 10px;">➕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment fields -->
+      <div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:10px;">পেমেন্ট তথ্য</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">মোট (৳) <span style="color:var(--muted2);font-weight:400;">(স্বয়ংক্রিয়)</span></label>
+            <input id="eiTotal" type="number" placeholder="0" readonly style="background:#f8fafc;">
+          </div>
+          <div class="form-field">
+            <label class="field-label">পরিশোধিত (৳)</label>
+            <input id="eiPaid" type="number" placeholder="0" min="0" step="any" oninput="eiSyncDue()">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label class="field-label">বাকি (৳)</label>
+            <input id="eiDue" type="number" placeholder="0" min="0" step="any">
+          </div>
+          <div class="form-field" style="margin-bottom:0;">
+            <label class="field-label">স্ট্যাটাস</label>
+            <select id="eiStatus">
+              <option value="পরিশোধিত">✅ পরিশোধিত (Paid)</option>
+              <option value="বাকি">❌ বাকি (Due)</option>
+              <option value="আংশিক">⚠️ আংশিক (Partial)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="eiInvoiceId">
+      <button class="btn btn-primary" onclick="saveEditedInvoice()">💾 পরিবর্তন সেভ করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     SAVED INVOICES MODAL (Part 2)
+═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="savedInvoicesModal">
+  <div class="modal-box" style="max-width:680px;">
+    <div class="modal-topbar">
+      <div class="modal-title">📋 সংরক্ষিত ইনভয়েস</div>
+      <button class="modal-close" onclick="closeModal('savedInvoicesModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input id="invSearch" placeholder="🔍 নাম, ফোন, ইনভয়েস নম্বর বা তারিখ দিয়ে খুঁজুন..." oninput="renderSavedInvoices()" style="margin-bottom:0;">
+      <div id="savedInvoicesList" style="margin-top:0;"></div>
     </div>
   </div>
 </div>
@@ -1077,14 +1498,73 @@ function renderData(){
 }
 
 /* ═══════════════════════════════════════════
+   FIX 3 — TOPBAR INSTANT SEARCH DROPDOWN
+   Shows matched products directly below the
+   sticky topbar search bar — no scrolling needed
+═══════════════════════════════════════════ */
+function renderTopSearch(){
+  const q = normalize(search.value);
+  const drop = document.getElementById('topSearchDrop');
+  const tsdList = document.getElementById('tsdList');
+  const tsdCount = document.getElementById('tsdCount');
+
+  // Hide dropdown when search is empty
+  if(!q){
+    drop.classList.remove('open');
+    return;
+  }
+
+  const matched = products.filter(p=>normalize(p.name).includes(q));
+  tsdCount.textContent = `${matched.length} টি পণ্য পাওয়া গেছে`;
+
+  if(!matched.length){
+    tsdList.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted2);font-size:14px;">কোনো পণ্য পাওয়া যায়নি</div>`;
+    drop.classList.add('open');
+    return;
+  }
+
+  tsdList.innerHTML = matched.map(p=>{
+    const u1 = p.unit.split(' ')[0];
+    return `<div class="tsd-item" onclick="closeTopSearch()">
+      <div class="tsd-name">${p.name}</div>
+      <div class="tsd-unit">${u1}</div>
+      <div class="tsd-price">৳ ${p.price}</div>
+    </div>`;
+  }).join('');
+
+  drop.classList.add('open');
+}
+
+function closeTopSearch(){
+  document.getElementById('topSearchDrop').classList.remove('open');
+  // Do NOT clear the search — let renderData keep the filter active
+}
+
+/* ═══════════════════════════════════════════
    BILL POPUP TOGGLE — original toggleBillPanel preserved
 ═══════════════════════════════════════════ */
+/* Mobile floating icon helper */
+function isMobile(){ return window.innerWidth <= 520; }
+function hideFabOnMobile(){
+  if(!isMobile()) return;
+  document.getElementById('floatingBillBtn').style.display = 'none';
+  document.getElementById('shortListBtn').style.display = 'none';
+}
+function showFabOnMobile(){
+  if(!isMobile()) return;
+  document.getElementById('floatingBillBtn').style.display = '';
+  document.getElementById('shortListBtn').style.display = '';
+}
+
 function toggleBillPanel(){
   const box = document.getElementById('billBox');
   box.classList.toggle('show');
   if(box.classList.contains('show')){
     document.getElementById('billDateStr').textContent = nowStr();
     billSearch.focus();
+    hideFabOnMobile();
+  } else {
+    showFabOnMobile();
   }
 }
 
@@ -1283,13 +1763,12 @@ function updateFab(cnt){
 /* ═══════════════════════════════════════════
    INVOICE — Professional Print / PDF
 ═══════════════════════════════════════════ */
-function buildInvoiceHTML(shop, customer, address, phone){
-  invoiceCounter++;
-  localStorage.setItem('invoiceCounter', invoiceCounter);
-
+// Build invoice HTML — does NOT increment counter (pure render)
+function buildInvoiceHTML(shop, customer, custPhone, custAddress, invNum, paid, due, status){
   const now = new Date();
   const dateStr = now.toLocaleDateString('bn-BD',{year:'numeric',month:'long',day:'numeric'});
   const timeStr = now.toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'});
+  const num = invNum || invoiceCounter;
 
   let rows=''; let subtotal=0;
   billCart.forEach((item,i)=>{
@@ -1298,36 +1777,47 @@ function buildInvoiceHTML(shop, customer, address, phone){
       <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;">${i+1}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;font-weight:600;">${item.name}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;text-align:right;">${item.qty} ${item.unit||''}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;text-align:right;">৳${item.unitPrice.toFixed(2)}</td>
-      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;text-align:right;font-weight:700;">৳${item.total.toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;text-align:right;">৳${Number(item.unitPrice).toFixed(2)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;text-align:right;font-weight:700;">৳${Number(item.total).toFixed(2)}</td>
     </tr>`;
   });
 
+  const paidAmt  = parseFloat(paid||0)||0;
+  const dueAmt   = parseFloat(due||0)||0;
+  const statusLbl = status||'পরিশোধিত';
+  const statusColor = statusLbl==='পরিশোধিত'?'#16a34a':statusLbl==='বাকি'?'#dc2626':'#d97706';
+
   return `<div style="font-family:'Hind Siliguri',sans-serif;color:#0f172a;max-width:600px;margin:auto;">
+    <!-- STORE HEADER (Part 4 — always default) -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:2px solid #0f172a;">
       <div>
-        <div style="font-size:26px;font-weight:700;color:#0f172a;">${shop||'ছৈয়দ স্টোর'}</div>
-        ${address?`<div style="font-size:12px;color:#64748b;margin-top:3px;">📍 ${address}</div>`:''}
-        ${phone?`<div style="font-size:12px;color:#64748b;">📞 ${phone}</div>`:''}
+        <div style="font-size:22px;font-weight:700;color:#0f172a;">মো: ছৈয়দ স্টোর</div>
+        <div style="font-size:12px;color:#64748b;margin-top:3px;">📍 ধলারমার মসজিদ, উত্তর সরেঙ্গা, আনোয়ারা, চট্টগ্রাম</div>
+        <div style="font-size:12px;color:#64748b;">📞 ০১৮১৩৮৮২৫০৪</div>
+        ${(shop&&shop!=='মো: ছৈয়দ স্টোর')?`<div style="font-size:11px;color:#94a3b8;margin-top:2px;">${shop}</div>`:''}
       </div>
       <div style="text-align:right;">
         <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;">ইনভয়েস নং</div>
-        <div style="font-size:20px;font-weight:700;font-family:monospace;color:#1d4ed8;">#${invoiceCounter}</div>
+        <div style="font-size:20px;font-weight:700;font-family:monospace;color:#1d4ed8;">#${num}</div>
         <div style="font-size:12px;color:#64748b;margin-top:4px;">${dateStr}</div>
         <div style="font-size:12px;color:#64748b;">${timeStr}</div>
+        <div style="margin-top:6px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;display:inline-block;">${statusLbl}</div>
       </div>
     </div>
-    ${customer?`<div style="margin-bottom:16px;padding:12px 14px;background:#f0f4ff;border-radius:10px;font-size:13px;border:1px solid #dde3f0;">
-      <strong>কাস্টমার:</strong> ${customer}
+    <!-- CUSTOMER INFO (Part 3) -->
+    ${(customer||custPhone||custAddress)?`<div style="margin-bottom:16px;padding:12px 14px;background:#f0f4ff;border-radius:10px;font-size:13px;border:1px solid #dde3f0;">
+      ${customer?`<div><strong>কাস্টমার:</strong> ${customer}</div>`:''}
+      ${custPhone?`<div><strong>ফোন:</strong> ${custPhone}</div>`:''}
+      ${custAddress?`<div><strong>ঠিকানা:</strong> ${custAddress}</div>`:''}
     </div>`:''}
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
       <thead>
         <tr style="background:#0f172a;color:#fff;">
-          <th style="padding:11px 12px;text-align:left;font-size:12px;border-radius:8px 0 0 0;">#</th>
+          <th style="padding:11px 12px;text-align:left;font-size:12px;">#</th>
           <th style="padding:11px 12px;text-align:left;font-size:12px;">পণ্য</th>
           <th style="padding:11px 12px;text-align:right;font-size:12px;">পরিমাণ</th>
           <th style="padding:11px 12px;text-align:right;font-size:12px;">একক দাম</th>
-          <th style="padding:11px 12px;text-align:right;font-size:12px;border-radius:0 8px 0 0;">মোট</th>
+          <th style="padding:11px 12px;text-align:right;font-size:12px;">মোট</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -1340,38 +1830,59 @@ function buildInvoiceHTML(shop, customer, address, phone){
         <div style="border-top:2px solid #0f172a;margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;font-size:20px;font-weight:700;color:#16a34a;">
           <span>মোট</span><span style="font-family:monospace;">৳${subtotal.toFixed(2)}</span>
         </div>
+        ${paidAmt?`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#16a34a;"><span>পরিশোধ</span><span>৳${paidAmt.toFixed(2)}</span></div>`:''}
+        ${dueAmt?`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;color:#dc2626;font-weight:700;"><span>বাকি</span><span>৳${dueAmt.toFixed(2)}</span></div>`:''}
       </div>
     </div>
     <div style="margin-top:32px;text-align:center;font-size:12px;color:#94a3b8;padding-top:16px;border-top:1px solid #e2e8f0;">
-      ধন্যবাদ আপনার কেনাকাটার জন্য 🙏 | ${shop||'ছৈয়দ স্টোর'} POS
+      ধন্যবাদ আপনার কেনাকাটার জন্য 🙏 | মো: ছৈয়দ স্টোর
     </div>
   </div>`;
 }
 
+function getInvoiceFields(){
+  return {
+    customer: document.getElementById('invCustomer').value.trim(),
+    custPhone: document.getElementById('invCustPhone').value.trim(),
+    custAddress: document.getElementById('invCustAddress').value.trim(),
+    paid: document.getElementById('invPaid').value.trim(),
+    due: document.getElementById('invDue').value.trim(),
+    status: document.getElementById('invStatus').value
+  };
+}
+
 function openInvoiceModal(){
   if(billCart.length===0){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
+  // Recalculate due when paid changes
+  syncDue();
   refreshInvoicePreview();
   openModal('invoiceModal');
 }
 
+function syncDue(){
+  const total = billCart.reduce((s,i)=>s+i.total,0);
+  const paid = parseFloat(document.getElementById('invPaid').value)||0;
+  const due = Math.max(0, total - paid);
+  document.getElementById('invDue').value = due>0 ? due.toFixed(2) : '';
+  // Auto-set status
+  const sel = document.getElementById('invStatus');
+  if(paid<=0) sel.value='বাকি';
+  else if(due<=0) sel.value='পরিশোধিত';
+  else sel.value='আংশিক';
+}
+
 function refreshInvoicePreview(){
-  const h = buildInvoiceHTML(
-    document.getElementById('invShop').value,
-    document.getElementById('invCustomer').value,
-    document.getElementById('invAddress').value,
-    document.getElementById('invPhone').value
-  );
+  const f = getInvoiceFields();
+  const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter+1, f.paid, f.due, f.status);
   document.getElementById('liveInvPreview').innerHTML = h;
 }
 
 // Original printBill logic preserved, enhanced with professional layout
 function printInvoice(){
-  const h = buildInvoiceHTML(
-    document.getElementById('invShop').value,
-    document.getElementById('invCustomer').value,
-    document.getElementById('invAddress').value,
-    document.getElementById('invPhone').value
-  );
+  const f = getInvoiceFields();
+  invoiceCounter++;
+  localStorage.setItem('invoiceCounter', invoiceCounter);
+  const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
   const pw = window.open('','','width=800,height=700');
   pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1387,12 +1898,10 @@ function printInvoice(){
 }
 
 function downloadInvoice(){
-  const h = buildInvoiceHTML(
-    document.getElementById('invShop').value,
-    document.getElementById('invCustomer').value,
-    document.getElementById('invAddress').value,
-    document.getElementById('invPhone').value
-  );
+  const f = getInvoiceFields();
+  invoiceCounter++;
+  localStorage.setItem('invoiceCounter', invoiceCounter);
+  const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
   const full = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
     <title>ইনভয়েস #${invoiceCounter}</title>
@@ -1406,14 +1915,365 @@ function downloadInvoice(){
   toast("ইনভয়েস সেভ হয়েছে ✅");
 }
 
+// PART 2 — Print & Save Invoice (new feature)
+function printAndSaveInvoice(){
+  const f = getInvoiceFields();
+  invoiceCounter++;
+  localStorage.setItem('invoiceCounter', invoiceCounter);
+  const now = new Date();
+  const subtotal = billCart.reduce((s,i)=>s+i.total,0);
+  // Save invoice record
+  const record = {
+    id: invoiceCounter,
+    date: now.toISOString(),
+    dateStr: now.toLocaleDateString('bn-BD',{year:'numeric',month:'long',day:'numeric'}),
+    timeStr: now.toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'}),
+    customer: f.customer,
+    custPhone: f.custPhone,
+    custAddress: f.custAddress,
+    items: JSON.parse(JSON.stringify(billCart)),
+    total: subtotal,
+    paid: parseFloat(f.paid)||0,
+    due: parseFloat(f.due)||0,
+    status: f.status
+  };
+  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  saved.unshift(record);
+  localStorage.setItem('savedInvoices', JSON.stringify(saved));
+
+  // Print
+  const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
+  const pw = window.open('','','width=800,height=700');
+  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>ইনভয়েস #${invoiceCounter}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}@media print{body{padding:20px;}}</style>
+    </head><body>${h}</body></html>`);
+  pw.document.close(); pw.focus();
+  setTimeout(()=>{ pw.print(); }, 700);
+  toast(`ইনভয়েস #${invoiceCounter} সেভ হয়েছে ✅`);
+  closeModal('invoiceModal');
+}
+
+/* ═══════════════════════════════════════════
+   PART 2 — SAVED INVOICES SYSTEM
+═══════════════════════════════════════════ */
+function openSavedInvoicesModal(){
+  renderSavedInvoices();
+  openModal('savedInvoicesModal');
+}
+
+function renderSavedInvoices(){
+  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  const q = normalize(document.getElementById('invSearch').value);
+  const el = document.getElementById('savedInvoicesList');
+
+  const filtered = saved.filter(inv=>{
+    if(!q) return true;
+    return normalize(inv.customer||'').includes(q)
+      || normalize(inv.custPhone||'').includes(q)
+      || String(inv.id).includes(q)
+      || normalize(inv.dateStr||'').includes(q);
+  });
+
+  if(!filtered.length){
+    el.innerHTML = `<div class="empty-list" style="padding:30px 0;"><div class="e-icon">🧾</div><div class="e-text">${q?'কোনো ইনভয়েস পাওয়া যায়নি':'এখনো কোনো ইনভয়েস সেভ হয়নি'}</div></div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(inv=>{
+    const statusColor = inv.status==='পরিশোধিত'?'#16a34a':inv.status==='বাকি'?'#dc2626':'#d97706';
+    const itemNames = (inv.items||[]).map(i=>i.name).slice(0,3).join(', ')+(inv.items.length>3?'...':'');
+    return `<div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:10px;background:var(--card);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:15px;font-weight:700;color:var(--primary);">#${inv.id}</span>
+            <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;font-weight:600;">${inv.status}</span>
+          </div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:4px;">${inv.customer||'(নাম নেই)'} ${inv.custPhone?'· '+inv.custPhone:''}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${inv.dateStr} ${inv.timeStr}</div>
+          <div style="font-size:12px;color:var(--muted2);margin-top:3px;">${itemNames}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:18px;font-weight:700;color:var(--success);">৳${Number(inv.total).toFixed(0)}</div>
+          ${inv.due>0?`<div style="font-size:11px;color:var(--danger);">বাকি ৳${Number(inv.due).toFixed(0)}</div>`:''}
+          <div style="display:flex;gap:5px;margin-top:6px;justify-content:flex-end;">
+            <button onclick="openEditInvoice(${inv.id})" style="padding:4px 10px;border:1px solid #bfdbfe;border-radius:7px;background:transparent;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);">✏️ এডিট</button>
+            <button onclick="deleteSavedInvoice(${inv.id})" style="padding:4px 10px;border:1px solid #fecaca;border-radius:7px;background:transparent;color:var(--danger);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);">🗑️ ডিলিট</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+        ${(inv.items||[]).map(i=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>${i.name} × ${i.qty} ${i.unit||''}</span><span>৳${Number(i.total).toFixed(2)}</span></div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteSavedInvoice(id){
+  if(!confirm('এই ইনভয়েস ডিলিট করবেন?')) return;
+  let saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  saved = saved.filter(inv=>inv.id!==id);
+  localStorage.setItem('savedInvoices', JSON.stringify(saved));
+  renderSavedInvoices();
+  toast("ইনভয়েস ডিলিট হয়েছে", 'info');
+}
+
+/* ═══════════════════════════════════════════
+   FIX 1 — SAVED INVOICE EDITOR
+═══════════════════════════════════════════ */
+let eiItems = []; // working copy of items being edited
+
+let _previewInvoiceId = null; // store id for edit-from-preview
+
+function openEditInvoice(id){
+  // Preview first — show invoice details, Edit button opens the editor
+  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  const inv = saved.find(i=>i.id===id);
+  if(!inv){ toast("ইনভয়েস পাওয়া যায়নি", 'err'); return; }
+
+  _previewInvoiceId = id;
+
+  // Build preview HTML
+  const statusColor = inv.status==='পরিশোধিত'?'#16a34a':inv.status==='বাকি'?'#dc2626':'#d97706';
+  const itemRows = (inv.items||[]).map((item,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;">
+        <span style="font-weight:600;">${i+1}. ${item.name}</span>
+        <span style="color:var(--muted);margin-left:6px;">${item.qty} ${item.unit||''} × ৳${Number(item.unitPrice).toFixed(2)}</span>
+      </div>
+      <div style="font-weight:700;color:var(--success);">৳${Number(item.total).toFixed(2)}</div>
+    </div>`).join('');
+
+  const html = `
+    <div style="background:var(--primary-light);border:1px solid #bfdbfe;border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-size:18px;font-weight:700;color:var(--primary);">#${inv.id}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-top:3px;">${inv.customer||'(নাম নেই)'}${inv.custPhone?' · '+inv.custPhone:''}</div>
+          ${inv.custAddress?`<div style="font-size:12px;color:var(--muted);">📍 ${inv.custAddress}</div>`:''}
+          <div style="font-size:12px;color:var(--muted2);margin-top:2px;">${inv.dateStr} ${inv.timeStr||''}</div>
+        </div>
+        <div style="text-align:right;">
+          <span style="font-size:12px;padding:3px 10px;border-radius:20px;background:${statusColor}22;color:${statusColor};border:1px solid ${statusColor}44;font-weight:700;">${inv.status}</span>
+          <div style="font-size:20px;font-weight:700;color:var(--success);margin-top:6px;">৳${Number(inv.total).toFixed(2)}</div>
+          ${inv.paid>0?`<div style="font-size:12px;color:#16a34a;">পরিশোধ: ৳${Number(inv.paid).toFixed(2)}</div>`:''}
+          ${inv.due>0?`<div style="font-size:12px;color:var(--danger);font-weight:600;">বাকি: ৳${Number(inv.due).toFixed(2)}</div>`:''}
+        </div>
+      </div>
+    </div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">পণ্য তালিকা (${(inv.items||[]).length} টি)</div>
+      ${itemRows}
+    </div>`;
+
+  document.getElementById('previewInvoiceContent').innerHTML = html;
+  // Close other modals before opening preview
+  closeModal('savedInvoicesModal');
+  openModal('previewInvoiceModal');
+}
+
+function openEditFromPreview(){
+  const id = _previewInvoiceId;
+  if(!id){ return; }
+  closeModal('previewInvoiceModal');
+
+  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  const inv = saved.find(i=>i.id===id);
+  if(!inv){ toast("ইনভয়েস পাওয়া যায়নি", 'err'); return; }
+
+  // Populate edit fields
+  document.getElementById('eiInvoiceId').value = id;
+  document.getElementById('eiCustomer').value  = inv.customer||'';
+  document.getElementById('eiPhone').value      = inv.custPhone||'';
+  document.getElementById('eiAddress').value    = inv.custAddress||'';
+  document.getElementById('eiPaid').value       = inv.paid||'';
+  document.getElementById('eiDue').value        = inv.due||'';
+  document.getElementById('eiStatus').value     = inv.status||'পরিশোধিত';
+  document.getElementById('eiTotal').value      = Number(inv.total||0).toFixed(2);
+
+  eiItems = JSON.parse(JSON.stringify(inv.items||[]));
+  eiRenderItems();
+
+  openModal('editInvoiceModal');
+}
+
+function eiRenderItems(){
+  const el = document.getElementById('eiItemsList');
+  if(!eiItems.length){
+    el.innerHTML = `<div style="text-align:center;padding:12px 0;color:var(--muted2);font-size:13px;">পণ্য তালিকা খালি — নিচে যোগ করুন</div>`;
+    eiCalcTotal();
+    return;
+  }
+  el.innerHTML = eiItems.map((item,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 70px 80px 80px auto;gap:5px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);">
+      <input value="${item.name}" onchange="eiItems[${i}].name=this.value" style="font-size:13px;padding:7px 10px;">
+      <input type="number" value="${item.qty}" min="0" step="any"
+        onchange="eiItems[${i}].qty=parseFloat(this.value)||0;eiItems[${i}].total=eiItems[${i}].qty*eiItems[${i}].unitPrice;eiRenderItems();"
+        style="font-size:13px;padding:7px 8px;text-align:center;">
+      <input type="number" value="${Number(item.unitPrice).toFixed(2)}" min="0" step="any"
+        onchange="eiItems[${i}].unitPrice=parseFloat(this.value)||0;eiItems[${i}].total=eiItems[${i}].qty*eiItems[${i}].unitPrice;eiRenderItems();"
+        style="font-size:13px;padding:7px 8px;text-align:right;">
+      <div style="font-size:13px;font-weight:700;color:var(--success);text-align:right;padding:0 4px;">৳${Number(item.total||0).toFixed(0)}</div>
+      <button onclick="eiRemoveItem(${i})"
+        style="width:28px;height:28px;border:1.5px solid #fecaca;border-radius:7px;background:transparent;color:var(--danger);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>`).join('');
+  eiCalcTotal();
+}
+
+function eiCalcTotal(){
+  const total = eiItems.reduce((s,i)=>s+Number(i.total||0),0);
+  document.getElementById('eiTotal').value = total.toFixed(2);
+  eiSyncDue();
+}
+
+function eiSyncDue(){
+  const total = parseFloat(document.getElementById('eiTotal').value)||0;
+  const paid  = parseFloat(document.getElementById('eiPaid').value)||0;
+  const due   = Math.max(0, total - paid);
+  document.getElementById('eiDue').value = due>0 ? due.toFixed(2) : '';
+  const sel = document.getElementById('eiStatus');
+  if(paid<=0) sel.value='বাকি';
+  else if(due<=0) sel.value='পরিশোধিত';
+  else sel.value='আংশিক';
+}
+
+function eiAddItem(){
+  const name  = document.getElementById('eiAddName').value.trim();
+  const qty   = parseFloat(document.getElementById('eiAddQty').value)||0;
+  const price = parseFloat(document.getElementById('eiAddPrice').value)||0;
+  if(!name){ toast("পণ্যের নাম দিন", 'err'); return; }
+  eiItems.push({ name, qty, unitPrice: price, total: qty*price, unit: '' });
+  document.getElementById('eiAddName').value  = '';
+  document.getElementById('eiAddQty').value   = '';
+  document.getElementById('eiAddPrice').value = '';
+  eiRenderItems();
+}
+
+function eiRemoveItem(idx){
+  eiItems.splice(idx,1);
+  eiRenderItems();
+}
+
+function saveEditedInvoice(){
+  const id       = parseInt(document.getElementById('eiInvoiceId').value);
+  const saved    = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  const idx      = saved.findIndex(i=>i.id===id);
+  if(idx===-1){ toast("ইনভয়েস পাওয়া যায়নি", 'err'); return; }
+
+  saved[idx].customer    = document.getElementById('eiCustomer').value.trim();
+  saved[idx].custPhone   = document.getElementById('eiPhone').value.trim();
+  saved[idx].custAddress = document.getElementById('eiAddress').value.trim();
+  saved[idx].paid        = parseFloat(document.getElementById('eiPaid').value)||0;
+  saved[idx].due         = parseFloat(document.getElementById('eiDue').value)||0;
+  saved[idx].status      = document.getElementById('eiStatus').value;
+  saved[idx].items       = JSON.parse(JSON.stringify(eiItems));
+  saved[idx].total       = eiItems.reduce((s,i)=>s+Number(i.total||0),0);
+
+  localStorage.setItem('savedInvoices', JSON.stringify(saved));
+  toast(`ইনভয়েস #${id} আপডেট হয়েছে ✅`);
+  closeModal('editInvoiceModal');
+  // Refresh any open views
+  if(document.getElementById('savedInvoicesModal').classList.contains('open')) renderSavedInvoices();
+  if(currentBillTab==='saved') renderBillBoxInvoices();
+  // Reopen preview with updated data
+  openEditInvoice(id);
+}
+
+/* ═══════════════════════════════════════════
+   FIX 2 — BILL POPUP TAB SWITCHER
+═══════════════════════════════════════════ */
+let currentBillTab = 'bill';
+
+function switchBillTab(tab){
+  currentBillTab = tab;
+  const billBody   = document.getElementById('billPanelBody');
+  const savedBody  = document.getElementById('savedPanelBody');
+  const footer     = document.getElementById('billFooterMain');
+  const tabBill    = document.getElementById('billTabBill');
+  const tabSaved   = document.getElementById('billTabSaved');
+
+  if(tab === 'bill'){
+    billBody.style.display  = 'block';
+    savedBody.style.display = 'none';
+    footer.style.display    = 'block';
+    tabBill.style.color         = 'var(--primary)';
+    tabBill.style.borderBottomColor  = 'var(--primary)';
+    tabBill.style.fontWeight    = '700';
+    tabSaved.style.color        = 'var(--muted)';
+    tabSaved.style.borderBottomColor = 'transparent';
+    tabSaved.style.fontWeight   = '600';
+  } else {
+    billBody.style.display  = 'none';
+    savedBody.style.display = 'block';
+    footer.style.display    = 'none';
+    tabSaved.style.color        = 'var(--primary)';
+    tabSaved.style.borderBottomColor = 'var(--primary)';
+    tabSaved.style.fontWeight   = '700';
+    tabBill.style.color         = 'var(--muted)';
+    tabBill.style.borderBottomColor  = 'transparent';
+    tabBill.style.fontWeight    = '600';
+    renderBillBoxInvoices();
+  }
+}
+
+function renderBillBoxInvoices(){
+  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  const q = normalize(document.getElementById('billBoxInvSearch').value);
+  const el = document.getElementById('billBoxInvList');
+
+  const filtered = saved.filter(inv=>{
+    if(!q) return true;
+    return normalize(inv.customer||'').includes(q)
+      || normalize(inv.custPhone||'').includes(q)
+      || String(inv.id).includes(q)
+      || normalize(inv.dateStr||'').includes(q);
+  });
+
+  if(!filtered.length){
+    el.innerHTML = `<div style="text-align:center;padding:24px 0;color:var(--muted2);font-size:13px;">
+      ${q?'কোনো ইনভয়েস পাওয়া যায়নি':'এখনো কোনো ইনভয়েস সেভ হয়নি'}</div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.slice(0,20).map(inv=>{
+    const sc = inv.status==='পরিশোধিত'?'#16a34a':inv.status==='বাকি'?'#dc2626':'#d97706';
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:var(--primary);">#${inv.id}
+            <span style="font-size:10px;padding:1px 6px;border-radius:10px;background:${sc}22;color:${sc};border:1px solid ${sc}44;margin-left:4px;">${inv.status}</span>
+          </div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-top:2px;">${inv.customer||'(নাম নেই)'}${inv.custPhone?' · '+inv.custPhone:''}</div>
+          <div style="font-size:11px;color:var(--muted2);">${inv.dateStr}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:15px;font-weight:700;color:var(--success);">৳${Number(inv.total).toFixed(0)}</div>
+          ${inv.due>0?`<div style="font-size:10px;color:var(--danger);">বাকি ৳${Number(inv.due).toFixed(0)}</div>`:''}
+          <div style="display:flex;gap:3px;margin-top:4px;justify-content:flex-end;">
+            <button onclick="openEditInvoice(${inv.id})"
+              style="padding:2px 7px;border:1px solid #bfdbfe;border-radius:5px;background:transparent;color:var(--primary);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">👁️</button>
+            <button onclick="deleteSavedInvoice(${inv.id});renderBillBoxInvoices();"
+              style="padding:2px 7px;border:1px solid #fecaca;border-radius:5px;background:transparent;color:var(--danger);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">🗑️</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 /* ═══════════════════════════════════════════
    BACKUP SYSTEM
 ═══════════════════════════════════════════ */
 function exportBackup(){
   const data = {
-    version:'3.0',
+    version:'4.0',
     exportDate:new Date().toISOString(),
-    products, billCart, invoiceCounter
+    products, billCart, invoiceCounter,
+    savedInvoices: JSON.parse(localStorage.getItem('savedInvoices')||'[]'),
+    shortList: JSON.parse(localStorage.getItem('shortList')||'[]'),
+    slHistory: JSON.parse(localStorage.getItem('slHistory')||'[]')
   };
   const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -1439,11 +2299,26 @@ function importBackup(input){
       const data = JSON.parse(e.target.result);
       if(!data.products) throw new Error('invalid');
       if(!confirm(`${data.products.length} টি পণ্য রিস্টোর করবেন? বর্তমান ডেটা মুছে যাবে।`)) return;
+
+      // PART 1 BUG FIX: Assign to the module-level products array
       products = data.products;
       if(data.invoiceCounter) invoiceCounter = data.invoiceCounter;
-      saveData();
+
+      // Write to localStorage first, then re-read to ensure clean reference
+      localStorage.setItem("backup", JSON.stringify(products));
+      localStorage.setItem('invoiceCounter', invoiceCounter);
+
+      // PART 1 BUG FIX: Reset search so renderData shows ALL products
+      search.value = '';
+
+      // Re-read from localStorage to guarantee the array is fresh
+      products = JSON.parse(localStorage.getItem("backup")) || [];
+
+      renderData();
+      renderBill();
+      updateStats();
       toast(`${products.length} টি পণ্য রিস্টোর হয়েছে ✅`);
-    } catch(e){ toast("ব্যাকআপ ফাইলে সমস্যা", 'err'); }
+    } catch(err){ toast("ব্যাকআপ ফাইলে সমস্যা", 'err'); }
   };
   reader.readAsText(file);
   input.value='';
@@ -1540,6 +2415,8 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     document.querySelectorAll('.modal-overlay.open').forEach(o=>o.classList.remove('open'));
     document.getElementById('billBox').classList.remove('show');
+    document.getElementById('shortListBox').classList.remove('show');
+    showFabOnMobile();
   }
 });
 
@@ -1549,25 +2426,408 @@ document.addEventListener('mousedown',e=>{
   const billBox = document.getElementById('billBox');
   const fabBtn  = document.getElementById('floatingBillBtn');
   const results = document.getElementById('billSearchResults');
+  const slBox   = document.getElementById('shortListBox');
+  const slBtn   = document.getElementById('shortListBtn');
+
+  // Close bill box if click is outside
   if(billBox.classList.contains('show')
     && !billBox.contains(e.target)
     && !fabBtn.contains(e.target)
     && !results.contains(e.target)){
     billBox.classList.remove('show');
+    showFabOnMobile();
+  }
+  // Close shortlist box if click is outside
+  if(slBox.classList.contains('show')
+    && !slBox.contains(e.target)
+    && !slBtn.contains(e.target)){
+    slBox.classList.remove('show');
+    showFabOnMobile();
   }
 });
 
 /* ═══════════════════════════════════════════
-   INIT
+   PART 5 — SHORT LIST SYSTEM
 ═══════════════════════════════════════════ */
-(function init(){
+let shortList = JSON.parse(localStorage.getItem('shortList')||'[]');
+let slSelectedProduct = null;
+
+function saveShortList(){
+  localStorage.setItem('shortList', JSON.stringify(shortList));
+  renderShortList();
+  updateSlBadge();
+}
+
+function toggleShortList(){
+  const box = document.getElementById('shortListBox');
+  box.classList.toggle('show');
+  if(box.classList.contains('show')){
+    renderShortList();
+    // Show history section if there are saved histories
+    const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+    if(histories.length){
+      document.getElementById('slHistorySection').style.display = 'block';
+      slHistoryVisible = true;
+      document.getElementById('slHistoryToggleBtn').textContent = 'লুকান';
+      renderSlHistory();
+    }
+    document.getElementById('slSearch').focus();
+    hideFabOnMobile();
+  } else {
+    showFabOnMobile();
+  }
+}
+
+function searchSlProducts(){
+  const q = normalize(document.getElementById('slSearch').value);
+  const res = document.getElementById('slSearchResults');
+  if(!q){ res.style.display='none'; res.innerHTML=''; slSelectedProduct=null; return; }
+  const matches = products.filter(p=>normalize(p.name).includes(q));
+  if(!matches.length){ res.style.display='none'; slSelectedProduct=null; return; }
+  res.style.display='block';
+  res.innerHTML = matches.map(p=>
+    `<div class="bill-search-item" onclick="selectSlProduct(${p.id})" onmousedown="event.stopPropagation()">
+      <span>${p.name}</span><span class="bsi-price">${p.unit.split(' ')[0]}</span>
+    </div>`
+  ).join('');
+}
+
+function selectSlProduct(id){
+  slSelectedProduct = products.find(p=>p.id===id);
+  document.getElementById('slSearch').value = slSelectedProduct.name;
+  document.getElementById('slSearchResults').style.display='none';
+  document.getElementById('slSearchResults').innerHTML='';
+}
+
+function addToShortList(){
+  const name = document.getElementById('slSearch').value.trim();
+  if(!name){ toast("পণ্যের নাম দিন", 'err'); return; }
+  const qty  = document.getElementById('slQtyInput').value.trim();
+  const unit = document.getElementById('slUnitInput').value;
+  const note = document.getElementById('slNote').value.trim();
+  shortList.unshift({
+    id: Date.now(),
+    name,
+    qty: qty||'',
+    unit: qty?unit:'',
+    note,
+    done: false,
+    date: new Date().toLocaleDateString('bn-BD',{day:'numeric',month:'short',year:'numeric'})
+  });
+  document.getElementById('slSearch').value='';
+  document.getElementById('slQtyInput').value='';
+  document.getElementById('slNote').value='';
+  slSelectedProduct=null;
+  saveShortList();
+  toast("তালিকায় যোগ হয়েছে ✅");
+}
+
+function toggleSlDone(id){
+  const item = shortList.find(i=>i.id===id);
+  if(item) item.done = !item.done;
+  saveShortList();
+}
+
+function deleteSlItem(id){
+  shortList = shortList.filter(i=>i.id!==id);
+  saveShortList();
+}
+
+function clearDoneItems(){
+  shortList = shortList.filter(i=>!i.done);
+  saveShortList();
+}
+
+function clearAllShortList(){
+  if(shortList.length && !confirm("সব তালিকা মুছবেন?")) return;
+  shortList=[];
+  saveShortList();
+}
+
+function renderShortList(){
+  const el = document.getElementById('slItems');
+  if(!shortList.length){
+    el.innerHTML=`<div class="sl-empty">📝<br>তালিকা খালি আছে<br><span style="font-size:11px;">উপরে পণ্য যোগ করুন</span></div>`;
+    return;
+  }
+  // Group by date
+  const groups = {};
+  shortList.forEach(item=>{
+    const d = item.date||'আজ';
+    if(!groups[d]) groups[d]=[];
+    groups[d].push(item);
+  });
+  el.innerHTML = Object.entries(groups).map(([date,items])=>
+    `<div class="sl-history-date">${date}</div>`+
+    items.map(item=>`
+      <div class="sl-item">
+        <div class="sl-item-check ${item.done?'done':''}" onclick="toggleSlDone(${item.id})">${item.done?'✓':''}</div>
+        <div class="sl-item-body">
+          <div class="sl-item-name ${item.done?'done-text':''}">${item.name}${item.qty?` — ${item.qty} ${item.unit}`:''}</div>
+          ${item.note?`<div class="sl-item-meta">💬 ${item.note}</div>`:''}
+        </div>
+        <button class="sl-item-del" onclick="deleteSlItem(${item.id})">✕</button>
+      </div>`).join('')
+  ).join('');
+}
+
+function updateSlBadge(){
+  const cnt = shortList.filter(i=>!i.done).length;
+  const badge = document.getElementById('slBadge');
+  if(cnt>0){ badge.textContent=cnt; badge.style.display='flex'; }
+  else badge.style.display='none';
+}
+
+/* ═══════════════════════════════════════════
+   FIX 3 — SHORT LIST PDF + HISTORY
+═══════════════════════════════════════════ */
+function saveShortListAsHistory(){
+  if(!shortList.length){ toast("তালিকা খালি আছে", 'err'); return; }
+  const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+  const entry = {
+    id: Date.now(),
+    savedAt: new Date().toLocaleDateString('bn-BD',{day:'numeric',month:'long',year:'numeric'}),
+    savedTime: new Date().toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'}),
+    items: JSON.parse(JSON.stringify(shortList))
+  };
+  histories.unshift(entry);
+  histories.splice(30); // keep max 30 saved lists
+  localStorage.setItem('slHistory', JSON.stringify(histories));
+  toast("তালিকা হিস্ট্রিতে সেভ হয়েছে ✅");
+  // Show history section after save
+  const sec = document.getElementById('slHistorySection');
+  sec.style.display = 'block';
+  renderSlHistory();
+}
+
+function exportShortListPDF(){
+  if(!shortList.length){ toast("তালিকা খালি আছে", 'err'); return; }
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('bn-BD',{day:'numeric',month:'long',year:'numeric'});
+  const timeStr = now.toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'});
+
+  // Group by done/pending
+  const pending = shortList.filter(i=>!i.done);
+  const done    = shortList.filter(i=>i.done);
+
+  const makeRows = (items) => items.map((item,i)=>
+    `<tr style="background:${i%2===0?'#fff':'#f8fafc'};">
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;">${i+1}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;font-weight:600;${item.done?'text-decoration:line-through;color:#94a3b8;':''}">${item.name}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center;">${item.qty?item.qty+' '+item.unit:'-'}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;color:#64748b;">${item.note||'-'}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e8ecf0;text-align:center;">
+        <span style="padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;${item.done?'background:#f0fdf4;color:#16a34a;':'background:#fff7ed;color:#d97706;'}">${item.done?'সম্পন্ন':'বাকি'}</span>
+      </td>
+    </tr>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>শর্ট লিস্ট — ${dateStr}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}
+    @media print{body{padding:15px;}}
+  </style>
+  </head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #0f172a;">
+    <div>
+      <div style="font-size:22px;font-weight:700;">📝 শর্ট লিস্ট</div>
+      <div style="font-size:13px;color:#64748b;margin-top:4px;">মো: ছৈয়দ স্টোর — কেনার তালিকা</div>
+    </div>
+    <div style="text-align:right;font-size:13px;color:#64748b;">
+      <div>${dateStr}</div><div>${timeStr}</div>
+      <div style="margin-top:4px;font-weight:600;color:#0f172a;">মোট: ${shortList.length} টি পণ্য</div>
+    </div>
+  </div>
+  ${pending.length?`
+  <div style="font-size:13px;font-weight:700;color:#d97706;margin-bottom:8px;">⏳ বাকি আইটেম (${pending.length})</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px;">
+    <thead><tr style="background:#0f172a;color:#fff;">
+      <th style="padding:9px 12px;text-align:left;">#</th>
+      <th style="padding:9px 12px;text-align:left;">পণ্য</th>
+      <th style="padding:9px 12px;text-align:center;">পরিমাণ</th>
+      <th style="padding:9px 12px;text-align:left;">নোট</th>
+      <th style="padding:9px 12px;text-align:center;">অবস্থা</th>
+    </tr></thead>
+    <tbody>${makeRows(pending)}</tbody>
+  </table>`:''}
+  ${done.length?`
+  <div style="font-size:13px;font-weight:700;color:#16a34a;margin-bottom:8px;">✅ সম্পন্ন আইটেম (${done.length})</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead><tr style="background:#166534;color:#fff;">
+      <th style="padding:9px 12px;text-align:left;">#</th>
+      <th style="padding:9px 12px;text-align:left;">পণ্য</th>
+      <th style="padding:9px 12px;text-align:center;">পরিমাণ</th>
+      <th style="padding:9px 12px;text-align:left;">নোট</th>
+      <th style="padding:9px 12px;text-align:center;">অবস্থা</th>
+    </tr></thead>
+    <tbody>${makeRows(done)}</tbody>
+  </table>`:''}
+  <div style="margin-top:24px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px;">মো: ছৈয়দ স্টোর POS | ${dateStr}</div>
+  </body></html>`;
+
+  const blob = new Blob([html],{type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url;
+  a.download=`shortlist-${now.toLocaleDateString('en-CA')}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast("শর্ট লিস্ট PDF সেভ হয়েছে ✅");
+}
+
+let slHistoryVisible = false;
+function toggleSlHistory(){
+  const sec = document.getElementById('slHistorySection');
+  const btn = document.getElementById('slHistoryToggleBtn');
+  slHistoryVisible = !slHistoryVisible;
+  sec.style.display = slHistoryVisible ? 'block' : 'none';
+  btn.textContent = slHistoryVisible ? 'লুকান' : 'দেখান';
+  if(slHistoryVisible) renderSlHistory();
+}
+
+function renderSlHistory(){
+  const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+  const el = document.getElementById('slHistoryList');
+  if(!histories.length){
+    el.innerHTML=`<div style="text-align:center;padding:12px 0;color:var(--muted2);font-size:12px;">কোনো সেভ করা তালিকা নেই</div>`;
+    return;
+  }
+  el.innerHTML = histories.map(h=>`
+    <div style="border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:7px;background:#fff;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;color:var(--text);">${h.savedAt} ${h.savedTime}</div>
+          <div style="font-size:11px;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.items.length} টি পণ্য — ${h.items.slice(0,3).map(i=>i.name).join(', ')}${h.items.length>3?'...':''}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button onclick="openSlPreview(${h.id})"
+            style="padding:3px 8px;border:1px solid #c4b5fd;border-radius:6px;background:transparent;color:#7c3aed;font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">👁️ দেখুন</button>
+          <button onclick="deleteSlHistory(${h.id})"
+            style="padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:transparent;color:var(--danger);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">🗑️</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+let _previewSlId = null;
+
+function openSlPreview(id){
+  const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+  const h = histories.find(e=>e.id===id);
+  if(!h) return;
+  _previewSlId = id;
+
+  const pending = h.items.filter(i=>!i.done);
+  const done    = h.items.filter(i=>i.done);
+
+  const makeItemRows = (items) => items.map(item=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;${item.done?'color:#16a34a;':'color:#d97706;'};">${item.done?'✅':'⏳'}</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;${item.done?'text-decoration:line-through;color:var(--muted2);':''}">${item.name}${item.qty?' — '+item.qty+' '+item.unit:''}</div>
+        ${item.note?`<div style="font-size:11px;color:var(--muted2);">💬 ${item.note}</div>`:''}
+      </div>
+    </div>`).join('');
+
+  const html = `
+    <div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:var(--radius);padding:10px 14px;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;color:#7c3aed;">${h.savedAt} ${h.savedTime}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;">মোট ${h.items.length} টি পণ্য · সম্পন্ন ${done.length} · বাকি ${pending.length}</div>
+    </div>
+    ${pending.length?`<div style="font-size:12px;font-weight:700;color:#d97706;margin-bottom:6px;">⏳ বাকি (${pending.length})</div><div style="border:1px solid var(--border);border-radius:var(--radius);padding:0 12px;">${makeItemRows(pending)}</div>`:''}
+    ${done.length?`<div style="font-size:12px;font-weight:700;color:#16a34a;margin-top:10px;margin-bottom:6px;">✅ সম্পন্ন (${done.length})</div><div style="border:1px solid var(--border);border-radius:var(--radius);padding:0 12px;">${makeItemRows(done)}</div>`:''}`;
+
+  document.getElementById('previewSlContent').innerHTML = html;
+  openModal('previewSlModal');
+}
+
+function loadSlFromPreview(){
+  const id = _previewSlId;
+  if(!id) return;
+  closeModal('previewSlModal');
+  loadSlHistoryForEdit(id);
+}
+
+function deleteSlHistory(id){
+  let histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+  histories = histories.filter(h=>h.id!==id);
+  localStorage.setItem('slHistory', JSON.stringify(histories));
+  renderSlHistory();
+  toast("হিস্ট্রি মুছে গেছে", 'info');
+}
+
+/* FIX 2 — Load a saved shortlist history back into active list for editing */
+function loadSlHistoryForEdit(id){
+  const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+  const h = histories.find(e=>e.id===id);
+  if(!h) return;
+  if(shortList.length){
+    if(!confirm(`বর্তমান তালিকা সরিয়ে "${h.savedAt}" এর তালিকা লোড করবেন?`)) return;
+  }
+  // Deep copy so editing the active list doesn't mutate history
+  shortList = JSON.parse(JSON.stringify(h.items));
+  saveShortList();
+  // Scroll shortlist body to top so user sees the loaded items
+  const body = document.querySelector('.sl-body');
+  if(body) body.scrollTop = 0;
+  toast(`"${h.savedAt}" তালিকা লোড হয়েছে — এখন সম্পাদনা করুন ✅`);
+}
+
+/* ═══════════════════════════════════════════
+   INIT — bulletproof multi-event load
+═══════════════════════════════════════════ */
+function bootApp(){
   injectManifest();
   registerSW();
-  setMode('weight');    // start in original mode
+  setMode('weight');
+
+  // FIX 1: Always force-clear the search box BEFORE rendering.
+  // This defeats browser form restore, bfcache, and autocomplete
+  // that can silently set a value AFTER the script runs.
+  search.value = '';
+  search.setAttribute('value', '');
+
+  // FIX 1: Always re-read products fresh from localStorage at boot.
+  // The module-level `products` may have been set before localStorage
+  // was fully hydrated on some browsers/platforms.
+  try {
+    const raw = localStorage.getItem('backup');
+    products = raw ? JSON.parse(raw) : [];
+  } catch(e){ products = []; }
+
+  // FIX 1: Re-read billCart fresh too
+  try {
+    const raw2 = localStorage.getItem('billCart');
+    billCart = raw2 ? JSON.parse(raw2) : [];
+  } catch(e){ billCart = []; }
+
   renderData();
   renderBill();
   updateStats();
-})();
+  updateSlBadge();
+}
+
+// Run on DOMContentLoaded (normal page load)
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+  bootApp(); // already parsed (inline script runs after DOM)
+}
+
+// FIX 1: Also run on pageshow — catches bfcache restores where
+// the browser re-shows a frozen page without re-running scripts.
+// This is the most common cause of "works first time, blank after back/refresh".
+window.addEventListener('pageshow', function(e){
+  // e.persisted = true means restored from bfcache
+  search.value = '';
+  try { products = JSON.parse(localStorage.getItem('backup')||'[]'); } catch(e2){ products=[]; }
+  renderData();
+  updateStats();
+});
 </script>
 </body>
 </html>
