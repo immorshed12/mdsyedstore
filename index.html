@@ -12,6 +12,215 @@
 <title>ছৈয়দ স্টোর POS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- ═══ FIREBASE SDK ═══ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, collection,
+  setDoc, deleteDoc, onSnapshot,
+  getDoc, getDocs, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ── Firebase config ── */
+const firebaseConfig = {
+  apiKey: "AIzaSyDVtiOBqrTH5HTKNNHmPmqb64eqgYBMYP0",
+  authDomain: "mdsyedstore.firebaseapp.com",
+  projectId: "mdsyedstore",
+  storageBucket: "mdsyedstore.firebasestorage.app",
+  messagingSenderId: "114151932334",
+  appId: "1:114151932334:web:248968675a40bcf11ec83f"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+
+/* ════════════════════════════════════════════
+   FIREBASE HELPER — expose to global scope
+   so existing functions can call fb.*()
+════════════════════════════════════════════ */
+window.fb = {
+
+  /* ── PRODUCTS ── */
+  async saveProduct(product){
+    await setDoc(doc(db,'products', String(product.id)), product);
+  },
+  async deleteProduct(id){
+    await deleteDoc(doc(db,'products', String(id)));
+  },
+  listenProducts(callback){
+    return onSnapshot(collection(db,'products'), snap=>{
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      // Sort by id ascending (same as original order)
+      list.sort((a,b)=> a.id - b.id);
+      callback(list);
+    });
+  },
+
+  /* ── INVOICE COUNTER ── */
+  async saveInvoiceCounter(n){
+    await setDoc(doc(db,'meta','invoiceCounter'),{value:n});
+  },
+  async getInvoiceCounter(){
+    const d = await getDoc(doc(db,'meta','invoiceCounter'));
+    return d.exists() ? d.data().value : 1000;
+  },
+
+  /* ── SAVED INVOICES ── */
+  async saveInvoice(invoice){
+    await setDoc(doc(db,'savedInvoices', String(invoice.id)), invoice);
+  },
+  async deleteInvoice(id){
+    await deleteDoc(doc(db,'savedInvoices', String(id)));
+  },
+  listenInvoices(callback){
+    return onSnapshot(collection(db,'savedInvoices'), snap=>{
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      list.sort((a,b)=> b.id - a.id); // newest first
+      callback(list);
+    });
+  },
+
+  /* ── SHORT LIST (active) ── */
+  async saveShortList(items){
+    await setDoc(doc(db,'meta','shortList'),{items});
+  },
+  listenShortList(callback){
+    return onSnapshot(doc(db,'meta','shortList'), snap=>{
+      callback(snap.exists() ? (snap.data().items||[]) : []);
+    });
+  },
+
+  /* ── SHORT LIST HISTORY ── */
+  async saveSlHistory(entry){
+    await setDoc(doc(db,'slHistory', String(entry.id)), entry);
+  },
+  async deleteSlHistory(id){
+    await deleteDoc(doc(db,'slHistory', String(id)));
+  },
+  listenSlHistory(callback){
+    return onSnapshot(collection(db,'slHistory'), snap=>{
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      list.sort((a,b)=> b.id - a.id);
+      callback(list);
+    });
+  },
+
+  /* ── MIGRATE: push all localStorage data to Firebase once ── */
+  async migrateFromLocalStorage(){
+    const batch = writeBatch(db);
+
+    // products
+    const prods = JSON.parse(localStorage.getItem('backup')||'[]');
+    prods.forEach(p => batch.set(doc(db,'products',String(p.id)), p));
+
+    // savedInvoices
+    const invs = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+    invs.forEach(inv => batch.set(doc(db,'savedInvoices',String(inv.id)), inv));
+
+    // shortList
+    const sl = JSON.parse(localStorage.getItem('shortList')||'[]');
+    batch.set(doc(db,'meta','shortList'),{items:sl});
+
+    // slHistory
+    const slH = JSON.parse(localStorage.getItem('slHistory')||'[]');
+    slH.forEach(h => batch.set(doc(db,'slHistory',String(h.id)), h));
+
+    // invoiceCounter
+    const ic = parseInt(localStorage.getItem('invoiceCounter')||'1000');
+    batch.set(doc(db,'meta','invoiceCounter'),{value:ic});
+
+    await batch.commit();
+    localStorage.setItem('fb_migrated','1');
+    console.log('✅ Migration to Firebase complete');
+  }
+};
+
+/* ════════════════════════════════════════════
+   BOOT: start real-time listeners once DOM ready
+════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async ()=>{
+
+  // ── Show syncing indicator ──
+  window._fbReady = false;
+  const showSyncBadge = (txt, color='#2563eb') => {
+    let b = document.getElementById('fbSyncBadge');
+    if(!b){
+      b = document.createElement('div');
+      b.id = 'fbSyncBadge';
+      b.style.cssText = `position:fixed;top:66px;right:10px;z-index:4000;
+        padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
+        color:#fff;font-family:'Hind Siliguri',sans-serif;
+        box-shadow:0 2px 8px rgba(0,0,0,.2);transition:background .3s;`;
+      document.body.appendChild(b);
+    }
+    b.style.background = color;
+    b.textContent = txt;
+  };
+  showSyncBadge('🔄 সংযুক্ত হচ্ছে...');
+
+  // ── Migrate old localStorage data to Firebase (runs only once) ──
+  if(!localStorage.getItem('fb_migrated')){
+    try{
+      await window.fb.migrateFromLocalStorage();
+      showSyncBadge('✅ ডেটা মাইগ্রেট হয়েছে','#16a34a');
+      setTimeout(()=>showSyncBadge('🟢 সংযুক্ত','#16a34a'), 2000);
+    } catch(e){
+      showSyncBadge('⚠️ মাইগ্রেশন ব্যর্থ','#d97706');
+      console.error('Migration error:',e);
+    }
+  } else {
+    showSyncBadge('🟢 সংযুক্ত','#16a34a');
+  }
+
+  // ── invoiceCounter: load once from Firebase ──
+  try{
+    const ic = await window.fb.getInvoiceCounter();
+    window.invoiceCounter = ic;
+    // sync the global variable the app uses
+    if(typeof invoiceCounter !== 'undefined') window.invoiceCounter = ic;
+  } catch(e){ console.warn('invoiceCounter load failed',e); }
+
+  // ── PRODUCTS: real-time listener ──
+  window.fb.listenProducts(list=>{
+    window.products = list;
+    if(typeof renderData === 'function') renderData();
+    if(typeof updateStats === 'function') updateStats();
+    if(!window._fbReady){
+      window._fbReady = true;
+      showSyncBadge('🟢 সংযুক্ত','#16a34a');
+    }
+  });
+
+  // ── SAVED INVOICES: real-time listener ──
+  window.fb.listenInvoices(list=>{
+    // Store in memory so renderSavedInvoices / renderBillBoxInvoices can use it
+    window._fbInvoices = list;
+    if(typeof renderSavedInvoices === 'function' &&
+       document.getElementById('savedInvoicesModal').classList.contains('open'))
+      renderSavedInvoices();
+    if(typeof renderBillBoxInvoices === 'function' &&
+       window.currentBillTab === 'saved')
+      renderBillBoxInvoices();
+  });
+
+  // ── SHORT LIST: real-time listener ──
+  window.fb.listenShortList(items=>{
+    window.shortList = items;
+    if(typeof renderShortList === 'function') renderShortList();
+    if(typeof updateSlBadge === 'function') updateSlBadge();
+  });
+
+  // ── SL HISTORY: real-time listener ──
+  window.fb.listenSlHistory(list=>{
+    window._fbSlHistory = list;
+    if(typeof renderSlHistory === 'function') renderSlHistory();
+  });
+
+});
+</script>
 <style>
 /* ═══════════════════════════════════════════
    DESIGN TOKENS
@@ -740,6 +949,40 @@ input::placeholder{color:var(--muted2);}
 .sl-history-date{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:6px 0 4px;border-top:1px solid var(--border);}
 .sl-empty{text-align:center;padding:24px 14px;color:var(--muted2);font-size:13px;}
 
+/* ── MODE 2: Custom manual product entry panel ── */
+#customProductPanel{
+  margin:0 14px 10px;
+  border:1.5px dashed var(--border2);
+  border-radius:var(--radius);
+  padding:12px 13px;
+  background:#fafbff;
+  display:none;
+}
+#customProductPanel.show{display:block;}
+.custom-panel-title{
+  font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px;
+  display:flex;align-items:center;gap:5px;
+}
+.custom-field-row{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;}
+.custom-field-row.three{grid-template-columns:1fr 80px 80px;}
+.custom-input{
+  width:100%;padding:9px 11px;
+  border:1.5px solid var(--border);border-radius:9px;
+  font-size:13px;font-family:var(--font);
+  background:#fff;color:var(--text);outline:none;
+  transition:border-color .2s;
+}
+.custom-input:focus{border-color:var(--primary);}
+.custom-toggle-btn{
+  width:100%;padding:8px;border-radius:9px;border:1.5px dashed var(--border2);
+  background:transparent;color:var(--muted);font-size:12px;font-weight:600;
+  font-family:var(--font);cursor:pointer;margin:0 0 6px;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.custom-toggle-btn:hover{border-color:var(--warning);color:var(--warning);background:var(--warning-light);}
+.custom-toggle-btn.active{border-color:var(--warning);color:var(--warning);background:var(--warning-light);}
+
 /* ═══════════════════════════════════════════
    RESPONSIVE
 ═══════════════════════════════════════════ */
@@ -845,7 +1088,7 @@ input::placeholder{color:var(--muted2);}
         </div>
         <div class="form-field">
           <label class="field-label">প্রতি ইউনিট দাম (৳)</label>
-          <input id="price" placeholder="দাম লিখুন" type="number" min="0" step="any">
+          <input id="price" placeholder="দাম লিখুন" type="text" inputmode="decimal" data-numeric="1" min="0" step="any">
         </div>
       </div>
       <button class="btn btn-primary" id="mainBtn" onclick="handleAction()">➕ পণ্য যোগ করুন</button>
@@ -899,7 +1142,7 @@ input::placeholder{color:var(--muted2);}
       <div id="slSearchResults" style="display:none;background:#fff;border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;max-height:130px;overflow-y:auto;margin-top:3px;"></div>
     </div>
     <div class="sl-add-row" style="margin-top:8px;">
-      <input id="slQtyInput" type="number" placeholder="পরিমাণ (ঐচ্ছিক)" min="0" step="any">
+      <input id="slQtyInput" type="text" inputmode="decimal" data-numeric="1" placeholder="পরিমাণ (ঐচ্ছিক)" min="0" step="any">
       <select id="slUnitInput">
         <option>KG</option><option>Litre</option><option>Piece</option><option>Packet</option><option>Dozen</option><option>Gram</option>
       </select>
@@ -994,21 +1237,42 @@ input::placeholder{color:var(--muted2);}
       <!-- MODE A: quantity → price (ORIGINAL FEATURE — UNCHANGED) -->
       <div id="panelWeight">
         <label class="bill-field-label">পরিমাণ / ওজন</label>
-        <input id="billQty" type="number" placeholder="পরিমাণ লিখুন" min="0" step="any" oninput="calcFromQty()">
+        <input id="billQty" type="text" inputmode="decimal" data-numeric="1" placeholder="পরিমাণ লিখুন" min="0" step="any" oninput="calcFromQty()">
         <div class="calc-info" id="calcInfoWeight"></div>
       </div>
 
       <!-- MODE B: budget → auto weight (NEW FEATURE) -->
       <div id="panelPrice" style="display:none;">
         <label class="bill-field-label">কাস্টমারের বাজেট (৳)</label>
-        <input id="billBudget" type="number" placeholder="যেমন: ৫০ টাকার তেল" min="0" step="any" oninput="calcFromBudget()">
+        <input id="billBudget" type="text" inputmode="decimal" data-numeric="1" placeholder="যেমন: ৫০ টাকার তেল" min="0" step="any" oninput="calcFromBudget()">
         <div class="calc-info green" id="calcInfoBudget"></div>
       </div>
 
       <!-- Add Button -->
       <button class="btn btn-success" onclick="addSelectedToBill()">➕ বিলে যোগ করুন</button>
 
+      <!-- MODE 2: Custom / Manual product entry (NEW — does NOT touch saved product list) -->
+      <button class="custom-toggle-btn" id="customToggleBtn" onclick="toggleCustomPanel()">
+        ✏️ কাস্টম পণ্য যোগ করুন (তালিকায় নেই)
+      </button>
+
     </div><!-- /bill-input-section -->
+
+    <!-- Custom Product Panel (NEW) -->
+    <div id="customProductPanel">
+      <div class="custom-panel-title">✏️ কাস্টম পণ্য — ইনভয়েস-অনলি</div>
+      <div class="custom-field-row">
+        <input id="customProdName" class="custom-input" placeholder="পণ্যের নাম লিখুন" autocomplete="off">
+        <input id="customProdUnit" class="custom-input" placeholder="ইউনিট (যেমন: KG)">
+      </div>
+      <div class="custom-field-row three">
+        <input id="customProdQty" class="custom-input" type="text" inputmode="decimal" data-numeric="1" placeholder="পরিমাণ">
+        <input id="customProdPrice" class="custom-input" type="text" inputmode="decimal" data-numeric="1" placeholder="একক দাম">
+        <button onclick="addCustomProductToBill()"
+          style="padding:9px 6px;border:none;border-radius:9px;background:var(--warning);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);">➕ যোগ</button>
+      </div>
+      <div id="customCalcInfo" style="font-size:12px;color:var(--warning);font-weight:600;min-height:16px;"></div>
+    </div>
 
     <!-- Bill Items -->
     <div class="bill-items-list">
@@ -1091,11 +1355,11 @@ input::placeholder{color:var(--muted2);}
         <div class="form-row">
           <div class="form-field">
             <label class="field-label">পরিশোধিত (৳)</label>
-            <input id="invPaid" type="number" placeholder="0" min="0" step="any" oninput="syncDue();refreshInvoicePreview()">
+            <input id="invPaid" type="text" inputmode="decimal" data-numeric="1" placeholder="0" min="0" step="any" oninput="syncDue();refreshInvoicePreview()">
           </div>
           <div class="form-field">
             <label class="field-label">বাকি (৳)</label>
-            <input id="invDue" type="number" placeholder="স্বয়ংক্রিয়" min="0" step="any" oninput="refreshInvoicePreview()">
+            <input id="invDue" type="text" inputmode="decimal" data-numeric="1" placeholder="স্বয়ংক্রিয়" min="0" step="any" oninput="refreshInvoicePreview()">
           </div>
         </div>
         <div class="form-field" style="margin-bottom:0;">
@@ -1211,11 +1475,11 @@ input::placeholder{color:var(--muted2);}
           </div>
           <div>
             <label class="field-label">পরিমাণ</label>
-            <input id="eiAddQty" type="number" placeholder="qty" min="0" step="any">
+            <input id="eiAddQty" type="text" inputmode="decimal" data-numeric="1" placeholder="qty" min="0" step="any">
           </div>
           <div>
             <label class="field-label">দাম (৳)</label>
-            <input id="eiAddPrice" type="number" placeholder="price" min="0" step="any">
+            <input id="eiAddPrice" type="text" inputmode="decimal" data-numeric="1" placeholder="price" min="0" step="any">
           </div>
           <div>
             <label class="field-label">&nbsp;</label>
@@ -1230,17 +1494,17 @@ input::placeholder{color:var(--muted2);}
         <div class="form-row">
           <div class="form-field">
             <label class="field-label">মোট (৳) <span style="color:var(--muted2);font-weight:400;">(স্বয়ংক্রিয়)</span></label>
-            <input id="eiTotal" type="number" placeholder="0" readonly style="background:#f8fafc;">
+            <input id="eiTotal" type="text" inputmode="decimal" data-numeric="1" placeholder="0" readonly style="background:#f8fafc;">
           </div>
           <div class="form-field">
             <label class="field-label">পরিশোধিত (৳)</label>
-            <input id="eiPaid" type="number" placeholder="0" min="0" step="any" oninput="eiSyncDue()">
+            <input id="eiPaid" type="text" inputmode="decimal" data-numeric="1" placeholder="0" min="0" step="any" oninput="eiSyncDue()">
           </div>
         </div>
         <div class="form-row">
           <div class="form-field">
             <label class="field-label">বাকি (৳)</label>
-            <input id="eiDue" type="number" placeholder="0" min="0" step="any">
+            <input id="eiDue" type="text" inputmode="decimal" data-numeric="1" placeholder="0" min="0" step="any">
           </div>
           <div class="form-field" style="margin-bottom:0;">
             <label class="field-label">স্ট্যাটাস</label>
@@ -1367,6 +1631,54 @@ function bnToEn(text){
 // Original normalize — unchanged
 function normalize(t){ return String(t).toLowerCase().trim().replace(/\s+/g," "); }
 
+/* ═══════════════════════════════════════════
+   TASK 1 — BANGLA DIGIT AUTO-CONVERT
+   Attaches to all numeric inputs globally.
+   Converts Bangla digits → English in real-time
+   so all calculations work with either digit type.
+═══════════════════════════════════════════ */
+function convertBnDigitsInField(el){
+  const converted = bnToEn(el.value);
+  if(converted !== el.value){
+    const pos = el.selectionStart; // preserve cursor position
+    el.value = converted;
+    try{ el.setSelectionRange(pos, pos); }catch(e){}
+  }
+}
+function attachBnInputConverters(){
+  // Select all inputs that are numeric or could receive numeric input
+  // We target: type=number, type=text (for qty/price/note fields), excluding search/name/address
+  const numericIds = [
+    'price','billQty','billBudget',
+    'invPaid','invDue',
+    'eiPaid','eiDue','eiTotal','eiAddQty','eiAddPrice',
+    'slQtyInput',
+    'customProdQty','customProdPrice'
+  ];
+  numericIds.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){
+      el.addEventListener('input', ()=>convertBnDigitsInField(el));
+      // Wire live calc for custom panel fields
+      if(id === 'customProdQty' || id === 'customProdPrice'){
+        el.addEventListener('input', _updateCustomCalc);
+      }
+    }
+  });
+  // Also intercept keypress on type=number inputs to allow Bangla digits
+  document.addEventListener('input', e=>{
+    const el = e.target;
+    if(!el || el.tagName !== 'INPUT') return;
+    const t = (el.type||'').toLowerCase();
+    // For type=number inputs, browser may block non-numeric input silently.
+    // We handle this via the input event to normalize the value.
+    if(t === 'number' || el.dataset.numeric === '1'){
+      convertBnDigitsInField(el);
+    }
+  });
+}
+// Run after DOM is ready (called in bootApp)
+
 function cleanPrice(p){
   return parseFloat(bnToEn(String(p).trim()).replace(/[^0-9.]/g,''));
 }
@@ -1386,15 +1698,15 @@ function nowStr(){
 }
 
 /* ═══════════════════════════════════════════
-   SAVE — original logic preserved + billCart persistence added (TASK 2)
+   SAVE — localStorage + Firebase sync
 ═══════════════════════════════════════════ */
 function saveData(){
   localStorage.setItem("backup", JSON.stringify(products));
-  // TASK 2: also persist billCart so it survives refresh
   localStorage.setItem("billCart", JSON.stringify(billCart));
   renderData();
   renderBill();
   updateStats();
+  // Firebase is handled by individual write calls (handleAction / deleteProduct)
 }
 
 /* ═══════════════════════════════════════════
@@ -1405,8 +1717,9 @@ function saveData(){
 function handleAction(){
   let name  = nameInput.value.trim();
   let unit  = unitInput.value;
-  let price = priceInput.value.trim();
-  if(!name || !price){ toast("নাম ও দাম দিন", 'err'); return; }
+  let price = bnToEn(priceInput.value.trim()).replace(/[^0-9.]/g,'');
+  if(!name){ toast("পণ্যের নাম দিন", 'err'); return; }
+  if(!price || isNaN(parseFloat(price)) || parseFloat(price) < 0){ toast("সঠিক দাম দিন", 'err'); return; }
 
   if(editId === null){
     let exist = products.find(p=>p.name===name);
@@ -1416,12 +1729,15 @@ function handleAction(){
   if(editId !== null){
     let index = products.findIndex(p=>p.id===editId);
     products[index] = {id:editId, name, unit, price};
+    if(window.fb) window.fb.saveProduct(products[index]); // Firebase
     editId = null;
     mainBtn.innerText = "➕ পণ্য যোগ করুন";
     document.getElementById('cancelBtn').style.display = 'none';
     toast("পণ্য আপডেট হয়েছে ✅");
   } else {
-    products.push({id:Date.now(), name, unit, price});
+    const newProd = {id:Date.now(), name, unit, price};
+    products.push(newProd);
+    if(window.fb) window.fb.saveProduct(newProd); // Firebase
     toast("পণ্য যোগ হয়েছে ✅");
   }
 
@@ -1454,6 +1770,7 @@ function cancelEdit(){
 function deleteProduct(id){
   if(confirm("এই পণ্যটি ডিলিট করবেন?")){
     products = products.filter(p=>p.id!==id);
+    if(window.fb) window.fb.deleteProduct(id); // Firebase
     saveData();
     toast("পণ্য ডিলিট হয়েছে", 'info');
   }
@@ -1626,7 +1943,7 @@ function selectBillProduct(id){
 function calcFromQty(){
   const el = document.getElementById('calcInfoWeight');
   if(!selectedBillProduct || !billQty.value){ el.className='calc-info'; el.textContent=''; return; }
-  const qty = parseFloat(billQty.value);
+  const qty = parseFloat(bnToEn(billQty.value));
   const unitPrice = cleanPrice(selectedBillProduct.price);
   if(isNaN(qty)||isNaN(unitPrice)||qty<=0){ el.className='calc-info'; el.textContent=''; return; }
   const total = qty * unitPrice;
@@ -1640,14 +1957,13 @@ function calcFromQty(){
 function calcFromBudget(){
   const el = document.getElementById('calcInfoBudget');
   if(!selectedBillProduct || !billBudget.value){ el.className='calc-info green'; el.textContent=''; return; }
-  const budget = parseFloat(billBudget.value);
+  const budget = parseFloat(bnToEn(billBudget.value));
   const unitPrice = cleanPrice(selectedBillProduct.price);
   if(isNaN(budget)||isNaN(unitPrice)||budget<=0||unitPrice<=0){ el.className='calc-info green'; el.textContent=''; return; }
   const autoQty = budget / unitPrice;
-  const unitLabel = selectedBillProduct.unit.split(' ')[0];
+  const unitLabel = (selectedBillProduct.unit||'').split(' ')[0];
   el.className = 'calc-info green show';
   el.textContent = `⚖️ ৳${budget} ÷ ৳${unitPrice}/${unitLabel} = ${autoQty.toFixed(3)} ${unitLabel}`;
-  // Write calculated qty into hidden slot so addSelectedToBill can use it
   billQty.value = autoQty.toFixed(3);
 }
 
@@ -1655,19 +1971,19 @@ function calcFromBudget(){
    ADD TO BILL — original logic exactly preserved
 ═══════════════════════════════════════════ */
 function addSelectedToBill(){
-  let qty = Number(billQty.value);
+  let qty = parseFloat(bnToEn(String(billQty.value).trim()));
   if(!selectedBillProduct){ toast("পণ্য সিলেক্ট করুন", 'err'); return; }
-  if(!qty || qty<=0){ toast("পরিমাণ দিন", 'err'); return; }
+  if(!qty || qty <= 0 || isNaN(qty)){ toast("সঠিক পরিমাণ দিন", 'err'); return; }
 
   let existIndex = billCart.findIndex(item=>item.name===selectedBillProduct.name);
   if(existIndex !== -1){
     if(!confirm(`${selectedBillProduct.name} ইতিমধ্যে আছে। আবার যোগ করতে চান?`)) return;
   }
 
-  let priceText = String(selectedBillProduct.price).trim();
+  let priceText = String(selectedBillProduct.price||'').trim();
   priceText = bnToEn(priceText).replace(/[^0-9.]/g,'');
   let cleanP = parseFloat(priceText);
-  if(isNaN(cleanP)){ toast("দামে সমস্যা আছে", 'err'); return; }
+  if(isNaN(cleanP) || cleanP < 0){ toast("দামে সমস্যা আছে", 'err'); return; }
 
   let total = qty * cleanP;
   billCart.push({
@@ -1675,7 +1991,7 @@ function addSelectedToBill(){
     qty,
     total,
     unitPrice: cleanP,
-    unit: selectedBillProduct.unit.split(' ')[0],
+    unit: (selectedBillProduct.unit||'').split(' ')[0],
     mode: currentMode
   });
 
@@ -1693,8 +2009,92 @@ function addSelectedToBill(){
 }
 
 /* ═══════════════════════════════════════════
+   MODE 2 — CUSTOM / MANUAL PRODUCT ENTRY
+   Invoice-only. Does NOT touch saved product list.
+   Does NOT modify products[], localStorage backup,
+   or any existing data flow.
+═══════════════════════════════════════════ */
+function toggleCustomPanel(){
+  const panel = document.getElementById('customProductPanel');
+  const btn   = document.getElementById('customToggleBtn');
+  const isOpen = panel.classList.contains('show');
+  panel.classList.toggle('show', !isOpen);
+  btn.classList.toggle('active', !isOpen);
+  if(!isOpen){
+    document.getElementById('customProdName').focus();
+  } else {
+    // Clear fields on close
+    document.getElementById('customProdName').value  = '';
+    document.getElementById('customProdUnit').value  = '';
+    document.getElementById('customProdQty').value   = '';
+    document.getElementById('customProdPrice').value = '';
+    document.getElementById('customCalcInfo').textContent = '';
+  }
+}
+
+function _updateCustomCalc(){
+  const qty   = parseFloat(bnToEn(document.getElementById('customProdQty').value  || '0')) || 0;
+  const price = parseFloat(bnToEn(document.getElementById('customProdPrice').value|| '0')) || 0;
+  const info  = document.getElementById('customCalcInfo');
+  if(qty > 0 && price > 0){
+    info.textContent = `💡 ${qty} × ৳${price} = ৳${(qty * price).toFixed(2)}`;
+  } else {
+    info.textContent = '';
+  }
+}
+
+function addCustomProductToBill(){
+  const nameEl  = document.getElementById('customProdName');
+  const unitEl  = document.getElementById('customProdUnit');
+  const qtyEl   = document.getElementById('customProdQty');
+  const priceEl = document.getElementById('customProdPrice');
+
+  const name  = nameEl.value.trim();
+  const unit  = unitEl.value.trim() || 'পিস';
+  const qty   = parseFloat(bnToEn(qtyEl.value   || '0'));
+  const price = parseFloat(bnToEn(priceEl.value || '0'));
+
+  // Validation
+  if(!name){  toast("পণ্যের নাম দিন", 'err'); nameEl.focus();  return; }
+  if(!qty || qty <= 0){ toast("পরিমাণ দিন", 'err');  qtyEl.focus();  return; }
+  if(!price || price <= 0){ toast("দাম দিন", 'err'); priceEl.focus(); return; }
+  if(isNaN(qty) || isNaN(price)){ toast("সঠিক সংখ্যা দিন", 'err'); return; }
+
+  const total = qty * price;
+
+  // Duplicate check (same as existing flow)
+  const existIndex = billCart.findIndex(item => item.name === name);
+  if(existIndex !== -1){
+    if(!confirm(`"${name}" ইতিমধ্যে বিলে আছে। আবার যোগ করতে চান?`)) return;
+  }
+
+  // Push to billCart — exactly same structure as existing items
+  billCart.push({
+    name,
+    qty,
+    total,
+    unitPrice: price,
+    unit,
+    mode: 'custom'   // marks as manual entry; does NOT affect any existing logic
+  });
+
+  // Clear fields after successful add
+  nameEl.value  = '';
+  unitEl.value  = '';
+  qtyEl.value   = '';
+  priceEl.value = '';
+  document.getElementById('customCalcInfo').textContent = '';
+
+  toast(`"${name}" বিলে যোগ হয়েছে ✅`);
+  renderBill();
+}
+
+/* ═══════════════════════════════════════════
    RENDER BILL — original logic exactly preserved
 ═══════════════════════════════════════════ */
+function _escHtml(str){
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 function renderBill(){
   const emptyState = document.getElementById('billEmptyState');
   let totalSum = 0;
@@ -1715,14 +2115,16 @@ function renderBill(){
     totalSum += item.total;
     const modeBadge = item.mode==='price'
       ? `<span class="bi-mode-badge">বাজেট</span>`
-      : '';
+      : item.mode==='custom'
+        ? `<span class="bi-mode-badge" style="background:#fff7ed;color:#d97706;border-color:#fde68a;">কাস্টম</span>`
+        : '';
     return `<div class="bill-item-row">
       <div class="bi-left">
-        <div class="bi-name">${item.name}${modeBadge}</div>
-        <div class="bi-meta">${item.qty} ${item.unit||''} × ৳${item.unitPrice} = ৳${item.total.toFixed(2)}</div>
+        <div class="bi-name">${_escHtml(item.name)}${modeBadge}</div>
+        <div class="bi-meta">${_escHtml(item.qty)} ${_escHtml(item.unit||'')} × ৳${Number(item.unitPrice||0).toFixed(2)} = ৳${Number(item.total||0).toFixed(2)}</div>
       </div>
       <div class="bi-right">
-        <div class="bi-total">৳${item.total.toFixed(2)}</div>
+        <div class="bi-total">৳${Number(item.total||0).toFixed(2)}</div>
         <button class="bi-del" onclick="removeBillItem(${index})" title="সরান">✕</button>
       </div>
     </div>`;
@@ -1743,6 +2145,40 @@ function clearBill(){
   if(billCart.length && !confirm("বিল ক্লিয়ার করবেন?")) return;
   billCart = [];
   localStorage.setItem("billCart",JSON.stringify(billCart));
+  renderBill();
+}
+
+/* TASK 2 — Reset bill silently after successful save (no confirm needed) */
+function resetBillAfterSave(){
+  billCart = [];
+  localStorage.setItem("billCart", JSON.stringify(billCart));
+  selectedBillProduct = null;
+  // Clear all bill input fields
+  billSearch.value = '';
+  billQty.value = '';
+  billBudget.value = '';
+  document.getElementById('calcInfoWeight').className = 'calc-info';
+  document.getElementById('calcInfoWeight').textContent = '';
+  document.getElementById('calcInfoBudget').className = 'calc-info green';
+  document.getElementById('calcInfoBudget').textContent = '';
+  billSearchResults.style.display = 'none';
+  billSearchResults.innerHTML = '';
+  // Clear invoice modal fields for fresh next use
+  document.getElementById('invCustomer').value = '';
+  document.getElementById('invCustPhone').value = '';
+  document.getElementById('invCustAddress').value = '';
+  document.getElementById('invPaid').value = '';
+  document.getElementById('invDue').value = '';
+  document.getElementById('invStatus').value = 'পরিশোধিত';
+  // Reset custom product panel
+  const cp = document.getElementById('customProductPanel');
+  const ct = document.getElementById('customToggleBtn');
+  if(cp){ cp.classList.remove('show'); }
+  if(ct){ ct.classList.remove('active'); }
+  const cpFields = ['customProdName','customProdUnit','customProdQty','customProdPrice'];
+  cpFields.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const cci = document.getElementById('customCalcInfo');
+  if(cci) cci.textContent='';
   renderBill();
 }
 
@@ -1772,7 +2208,7 @@ function buildInvoiceHTML(shop, customer, custPhone, custAddress, invNum, paid, 
 
   let rows=''; let subtotal=0;
   billCart.forEach((item,i)=>{
-    subtotal+=item.total;
+    subtotal+=Number(item.total||0);
     rows+=`<tr>
       <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;">${i+1}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #e8ecf0;font-weight:600;">${item.name}</td>
@@ -1860,11 +2296,10 @@ function openInvoiceModal(){
 }
 
 function syncDue(){
-  const total = billCart.reduce((s,i)=>s+i.total,0);
-  const paid = parseFloat(document.getElementById('invPaid').value)||0;
+  const total = billCart.reduce((s,i)=>s+Number(i.total||0),0);
+  const paid = parseFloat(bnToEn(document.getElementById('invPaid').value||'0'))||0;
   const due = Math.max(0, total - paid);
   document.getElementById('invDue').value = due>0 ? due.toFixed(2) : '';
-  // Auto-set status
   const sel = document.getElementById('invStatus');
   if(paid<=0) sel.value='বাকি';
   else if(due<=0) sel.value='পরিশোধিত';
@@ -1877,27 +2312,26 @@ function refreshInvoicePreview(){
   document.getElementById('liveInvPreview').innerHTML = h;
 }
 
-// Original printBill logic preserved, enhanced with professional layout
 function printInvoice(){
+  if(!billCart.length){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
   const f = getInvoiceFields();
   invoiceCounter++;
   localStorage.setItem('invoiceCounter', invoiceCounter);
   const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
   const pw = window.open('','','width=800,height=700');
+  if(!pw){ toast("পপআপ ব্লক হয়েছে — ব্রাউজার অনুমতি দিন", 'err'); return; }
   pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
     <title>ইনভয়েস #${invoiceCounter}</title>
-    <style>
-      *{box-sizing:border-box;margin:0;padding:0;}
-      body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}
-      @media print{body{padding:20px;}}
-    </style>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}@media print{body{padding:20px;}}</style>
     </head><body>${h}</body></html>`);
   pw.document.close(); pw.focus();
-  setTimeout(()=>{ pw.print(); }, 700);
+  setTimeout(()=>{ try{ pw.print(); }catch(e){} }, 700);
+  resetBillAfterSave();
 }
 
 function downloadInvoice(){
+  if(!billCart.length){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
   const f = getInvoiceFields();
   invoiceCounter++;
   localStorage.setItem('invoiceCounter', invoiceCounter);
@@ -1907,22 +2341,25 @@ function downloadInvoice(){
     <title>ইনভয়েস #${invoiceCounter}</title>
     <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;}</style>
     </head><body>${h}</body></html>`;
-  const blob = new Blob([full],{type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url; a.download=`invoice-${invoiceCounter}.html`;
-  a.click(); URL.revokeObjectURL(url);
-  toast("ইনভয়েস সেভ হয়েছে ✅");
+  try{
+    const blob = new Blob([full],{type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=`invoice-${invoiceCounter}.html`;
+    a.click(); URL.revokeObjectURL(url);
+    toast("ইনভয়েস সেভ হয়েছে ✅");
+    resetBillAfterSave();
+  }catch(e){ toast("ডাউনলোড ব্যর্থ হয়েছে", 'err'); }
 }
 
 // PART 2 — Print & Save Invoice (new feature)
 function printAndSaveInvoice(){
+  if(!billCart.length){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
   const f = getInvoiceFields();
   invoiceCounter++;
   localStorage.setItem('invoiceCounter', invoiceCounter);
   const now = new Date();
-  const subtotal = billCart.reduce((s,i)=>s+i.total,0);
-  // Save invoice record
+  const subtotal = billCart.reduce((s,i)=>s+Number(i.total||0),0);
   const record = {
     id: invoiceCounter,
     date: now.toISOString(),
@@ -1933,26 +2370,31 @@ function printAndSaveInvoice(){
     custAddress: f.custAddress,
     items: JSON.parse(JSON.stringify(billCart)),
     total: subtotal,
-    paid: parseFloat(f.paid)||0,
-    due: parseFloat(f.due)||0,
+    paid: parseFloat(bnToEn(f.paid||'0'))||0,
+    due:  parseFloat(bnToEn(f.due||'0'))||0,
     status: f.status
   };
   const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
   saved.unshift(record);
   localStorage.setItem('savedInvoices', JSON.stringify(saved));
-
-  // Print
+  if(window.fb){
+    window.fb.saveInvoice(record);
+    window.fb.saveInvoiceCounter(invoiceCounter);
+  }
   const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
   const pw = window.open('','','width=800,height=700');
-  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-    <title>ইনভয়েস #${invoiceCounter}</title>
-    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}@media print{body{padding:20px;}}</style>
-    </head><body>${h}</body></html>`);
-  pw.document.close(); pw.focus();
-  setTimeout(()=>{ pw.print(); }, 700);
+  if(pw){
+    pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+      <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+      <title>ইনভয়েস #${invoiceCounter}</title>
+      <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}@media print{body{padding:20px;}}</style>
+      </head><body>${h}</body></html>`);
+    pw.document.close(); pw.focus();
+    setTimeout(()=>{ try{ pw.print(); }catch(e){} }, 700);
+  }
   toast(`ইনভয়েস #${invoiceCounter} সেভ হয়েছে ✅`);
   closeModal('invoiceModal');
+  resetBillAfterSave();
 }
 
 /* ═══════════════════════════════════════════
@@ -1964,7 +2406,8 @@ function openSavedInvoicesModal(){
 }
 
 function renderSavedInvoices(){
-  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  // Use Firebase data if available, else fall back to localStorage
+  const saved = window._fbInvoices || JSON.parse(localStorage.getItem('savedInvoices')||'[]');
   const q = normalize(document.getElementById('invSearch').value);
   const el = document.getElementById('savedInvoicesList');
 
@@ -2016,6 +2459,7 @@ function deleteSavedInvoice(id){
   let saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
   saved = saved.filter(inv=>inv.id!==id);
   localStorage.setItem('savedInvoices', JSON.stringify(saved));
+  if(window.fb) window.fb.deleteInvoice(id); // Firebase
   renderSavedInvoices();
   toast("ইনভয়েস ডিলিট হয়েছে", 'info');
 }
@@ -2129,8 +2573,8 @@ function eiCalcTotal(){
 }
 
 function eiSyncDue(){
-  const total = parseFloat(document.getElementById('eiTotal').value)||0;
-  const paid  = parseFloat(document.getElementById('eiPaid').value)||0;
+  const total = parseFloat(bnToEn(document.getElementById('eiTotal').value||'0'))||0;
+  const paid  = parseFloat(bnToEn(document.getElementById('eiPaid').value||'0'))||0;
   const due   = Math.max(0, total - paid);
   document.getElementById('eiDue').value = due>0 ? due.toFixed(2) : '';
   const sel = document.getElementById('eiStatus');
@@ -2141,10 +2585,12 @@ function eiSyncDue(){
 
 function eiAddItem(){
   const name  = document.getElementById('eiAddName').value.trim();
-  const qty   = parseFloat(document.getElementById('eiAddQty').value)||0;
-  const price = parseFloat(document.getElementById('eiAddPrice').value)||0;
+  const qty   = parseFloat(bnToEn(document.getElementById('eiAddQty').value||'0'))||0;
+  const price = parseFloat(bnToEn(document.getElementById('eiAddPrice').value||'0'))||0;
   if(!name){ toast("পণ্যের নাম দিন", 'err'); return; }
-  eiItems.push({ name, qty, unitPrice: price, total: qty*price, unit: '' });
+  if(qty <= 0){ toast("সঠিক পরিমাণ দিন", 'err'); return; }
+  if(price < 0){ toast("সঠিক দাম দিন", 'err'); return; }
+  eiItems.push({ name: _escHtml(name), qty, unitPrice: price, total: qty*price, unit: '' });
   document.getElementById('eiAddName').value  = '';
   document.getElementById('eiAddQty').value   = '';
   document.getElementById('eiAddPrice').value = '';
@@ -2172,6 +2618,7 @@ function saveEditedInvoice(){
   saved[idx].total       = eiItems.reduce((s,i)=>s+Number(i.total||0),0);
 
   localStorage.setItem('savedInvoices', JSON.stringify(saved));
+  if(window.fb) window.fb.saveInvoice(saved[idx]); // Firebase
   toast(`ইনভয়েস #${id} আপডেট হয়েছে ✅`);
   closeModal('editInvoiceModal');
   // Refresh any open views
@@ -2219,7 +2666,7 @@ function switchBillTab(tab){
 }
 
 function renderBillBoxInvoices(){
-  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  const saved = window._fbInvoices || JSON.parse(localStorage.getItem('savedInvoices')||'[]');
   const q = normalize(document.getElementById('billBoxInvSearch').value);
   const el = document.getElementById('billBoxInvList');
 
@@ -2300,19 +2747,19 @@ function importBackup(input){
       if(!data.products) throw new Error('invalid');
       if(!confirm(`${data.products.length} টি পণ্য রিস্টোর করবেন? বর্তমান ডেটা মুছে যাবে।`)) return;
 
-      // PART 1 BUG FIX: Assign to the module-level products array
       products = data.products;
       if(data.invoiceCounter) invoiceCounter = data.invoiceCounter;
 
-      // Write to localStorage first, then re-read to ensure clean reference
       localStorage.setItem("backup", JSON.stringify(products));
       localStorage.setItem('invoiceCounter', invoiceCounter);
-
-      // PART 1 BUG FIX: Reset search so renderData shows ALL products
       search.value = '';
-
-      // Re-read from localStorage to guarantee the array is fresh
       products = JSON.parse(localStorage.getItem("backup")) || [];
+
+      // Push restored data to Firebase
+      if(window.fb){
+        localStorage.setItem('fb_migrated',''); // reset so migrate runs again
+        window.fb.migrateFromLocalStorage().catch(err=>console.warn('Firebase restore failed',err));
+      }
 
       renderData();
       renderBill();
@@ -2454,6 +2901,7 @@ let slSelectedProduct = null;
 
 function saveShortList(){
   localStorage.setItem('shortList', JSON.stringify(shortList));
+  if(window.fb) window.fb.saveShortList(shortList); // Firebase
   renderShortList();
   updateSlBadge();
 }
@@ -2502,14 +2950,14 @@ function selectSlProduct(id){
 function addToShortList(){
   const name = document.getElementById('slSearch').value.trim();
   if(!name){ toast("পণ্যের নাম দিন", 'err'); return; }
-  const qty  = document.getElementById('slQtyInput').value.trim();
+  const qtyRaw = bnToEn(document.getElementById('slQtyInput').value.trim());
   const unit = document.getElementById('slUnitInput').value;
   const note = document.getElementById('slNote').value.trim();
   shortList.unshift({
     id: Date.now(),
     name,
-    qty: qty||'',
-    unit: qty?unit:'',
+    qty: qtyRaw||'',
+    unit: qtyRaw?unit:'',
     note,
     done: false,
     date: new Date().toLocaleDateString('bn-BD',{day:'numeric',month:'short',year:'numeric'})
@@ -2591,13 +3039,31 @@ function saveShortListAsHistory(){
     items: JSON.parse(JSON.stringify(shortList))
   };
   histories.unshift(entry);
-  histories.splice(30); // keep max 30 saved lists
+  histories.splice(30);
   localStorage.setItem('slHistory', JSON.stringify(histories));
+  if(window.fb) window.fb.saveSlHistory(entry); // Firebase
   toast("তালিকা হিস্ট্রিতে সেভ হয়েছে ✅");
   // Show history section after save
   const sec = document.getElementById('slHistorySection');
   sec.style.display = 'block';
   renderSlHistory();
+  // TASK 2: clear shortlist after successful save
+  resetShortListAfterSave();
+}
+
+/* TASK 2 — Reset shortlist after successful save */
+function resetShortListAfterSave(){
+  shortList = [];
+  localStorage.setItem('shortList', JSON.stringify(shortList));
+  if(window.fb) window.fb.saveShortList([]); // Firebase
+  document.getElementById('slSearch').value = '';
+  document.getElementById('slQtyInput').value = '';
+  document.getElementById('slNote').value = '';
+  document.getElementById('slSearchResults').style.display = 'none';
+  document.getElementById('slSearchResults').innerHTML = '';
+  slSelectedProduct = null;
+  renderShortList();
+  updateSlBadge();
 }
 
 function exportShortListPDF(){
@@ -2668,14 +3134,16 @@ function exportShortListPDF(){
   <div style="margin-top:24px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px;">মো: ছৈয়দ স্টোর POS | ${dateStr}</div>
   </body></html>`;
 
-  const blob = new Blob([html],{type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url;
-  a.download=`shortlist-${now.toLocaleDateString('en-CA')}.html`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast("শর্ট লিস্ট PDF সেভ হয়েছে ✅");
+  try{
+    const blob = new Blob([html],{type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url;
+    a.download=`shortlist-${now.toLocaleDateString('en-CA')}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("শর্ট লিস্ট PDF সেভ হয়েছে ✅");
+  }catch(e){ toast("ডাউনলোড ব্যর্থ হয়েছে", 'err'); }
 }
 
 let slHistoryVisible = false;
@@ -2689,7 +3157,7 @@ function toggleSlHistory(){
 }
 
 function renderSlHistory(){
-  const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+  const histories = window._fbSlHistory || JSON.parse(localStorage.getItem('slHistory')||'[]');
   const el = document.getElementById('slHistoryList');
   if(!histories.length){
     el.innerHTML=`<div style="text-align:center;padding:12px 0;color:var(--muted2);font-size:12px;">কোনো সেভ করা তালিকা নেই</div>`;
@@ -2756,6 +3224,7 @@ function deleteSlHistory(id){
   let histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
   histories = histories.filter(h=>h.id!==id);
   localStorage.setItem('slHistory', JSON.stringify(histories));
+  if(window.fb) window.fb.deleteSlHistory(id); // Firebase
   renderSlHistory();
   toast("হিস্ট্রি মুছে গেছে", 'info');
 }
@@ -2784,31 +3253,34 @@ function bootApp(){
   injectManifest();
   registerSW();
   setMode('weight');
+  attachBnInputConverters();
 
-  // FIX 1: Always force-clear the search box BEFORE rendering.
-  // This defeats browser form restore, bfcache, and autocomplete
-  // that can silently set a value AFTER the script runs.
   search.value = '';
   search.setAttribute('value', '');
 
-  // FIX 1: Always re-read products fresh from localStorage at boot.
-  // The module-level `products` may have been set before localStorage
-  // was fully hydrated on some browsers/platforms.
+  // Load from localStorage first (instant render while Firebase connects)
   try {
     const raw = localStorage.getItem('backup');
     products = raw ? JSON.parse(raw) : [];
   } catch(e){ products = []; }
 
-  // FIX 1: Re-read billCart fresh too
   try {
     const raw2 = localStorage.getItem('billCart');
     billCart = raw2 ? JSON.parse(raw2) : [];
   } catch(e){ billCart = []; }
 
+  // Load shortList from localStorage initially
+  try {
+    const raw3 = localStorage.getItem('shortList');
+    shortList = raw3 ? JSON.parse(raw3) : [];
+  } catch(e){ shortList = []; }
+
   renderData();
   renderBill();
   updateStats();
   updateSlBadge();
+  // Firebase real-time listeners take over automatically after bootApp
+  // (set up in the Firebase module script's DOMContentLoaded handler)
 }
 
 // Run on DOMContentLoaded (normal page load)
