@@ -183,9 +183,14 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if(typeof invoiceCounter !== 'undefined') window.invoiceCounter = ic;
   } catch(e){ console.warn('invoiceCounter load failed',e); }
 
-  // ── PRODUCTS: real-time listener ──
+  // ── PRODUCTS: real-time listener — Firebase is source of truth ──
   window.fb.listenProducts(list=>{
+    // Update BOTH window.products AND the module-level products variable
+    // so every device always sees the same list from Firestore
+    products = list;
     window.products = list;
+    // Also keep localStorage in sync so offline fallback is fresh
+    try{ localStorage.setItem('backup', JSON.stringify(list)); }catch(e){}
     if(typeof renderData === 'function') renderData();
     if(typeof updateStats === 'function') updateStats();
     if(!window._fbReady){
@@ -196,8 +201,9 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
   // ── SAVED INVOICES: real-time listener ──
   window.fb.listenInvoices(list=>{
-    // Store in memory so renderSavedInvoices / renderBillBoxInvoices can use it
+    // Firebase is source of truth — update memory cache AND localStorage
     window._fbInvoices = list;
+    try{ localStorage.setItem('savedInvoices', JSON.stringify(list)); }catch(e){}
     if(typeof renderSavedInvoices === 'function' &&
        document.getElementById('savedInvoicesModal').classList.contains('open'))
       renderSavedInvoices();
@@ -208,14 +214,19 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 
   // ── SHORT LIST: real-time listener ──
   window.fb.listenShortList(items=>{
+    // Firebase is source of truth — update both memory and localStorage
     window.shortList = items;
+    shortList = items;
+    try{ localStorage.setItem('shortList', JSON.stringify(items)); }catch(e){}
     if(typeof renderShortList === 'function') renderShortList();
     if(typeof updateSlBadge === 'function') updateSlBadge();
   });
 
   // ── SL HISTORY: real-time listener ──
   window.fb.listenSlHistory(list=>{
+    // Firebase is source of truth — update both memory and localStorage
     window._fbSlHistory = list;
+    try{ localStorage.setItem('slHistory', JSON.stringify(list)); }catch(e){}
     if(typeof renderSlHistory === 'function') renderSlHistory();
   });
 
@@ -1699,14 +1710,19 @@ function nowStr(){
 
 /* ═══════════════════════════════════════════
    SAVE — localStorage + Firebase sync
+   Products are synced via Firebase onSnapshot — do NOT overwrite from local state.
+   Only billCart is persisted locally (device-specific, not cross-device).
 ═══════════════════════════════════════════ */
 function saveData(){
-  localStorage.setItem("backup", JSON.stringify(products));
+  // NOTE: Do NOT write 'backup'/products to localStorage here.
+  // The Firebase listenProducts() listener is the single source of truth
+  // and keeps localStorage.backup updated automatically on every device.
+  // Writing it here from a local device's products array would overwrite
+  // fresh Firebase data with stale local state on other devices' next load.
   localStorage.setItem("billCart", JSON.stringify(billCart));
   renderData();
   renderBill();
   updateStats();
-  // Firebase is handled by individual write calls (handleAction / deleteProduct)
 }
 
 /* ═══════════════════════════════════════════
@@ -2456,10 +2472,14 @@ function renderSavedInvoices(){
 
 function deleteSavedInvoice(id){
   if(!confirm('এই ইনভয়েস ডিলিট করবেন?')) return;
-  let saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
-  saved = saved.filter(inv=>inv.id!==id);
-  localStorage.setItem('savedInvoices', JSON.stringify(saved));
-  if(window.fb) window.fb.deleteInvoice(id); // Firebase
+  // Firebase delete is the authoritative action — triggers onSnapshot on all devices
+  if(window.fb) window.fb.deleteInvoice(id).catch(e=>console.error('Delete invoice error',e));
+  // Also remove from localStorage cache on this device
+  try{
+    let saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+    saved = saved.filter(inv=>inv.id!==id);
+    localStorage.setItem('savedInvoices', JSON.stringify(saved));
+  }catch(e){}
   renderSavedInvoices();
   toast("ইনভয়েস ডিলিট হয়েছে", 'info');
 }
@@ -2472,14 +2492,14 @@ let eiItems = []; // working copy of items being edited
 let _previewInvoiceId = null; // store id for edit-from-preview
 
 function openEditInvoice(id){
-  // Preview first — show invoice details, Edit button opens the editor
-  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
-  const inv = saved.find(i=>i.id===id);
+  // Always use Firebase data as source of truth for cross-device access.
+  // Fall back to localStorage only if Firebase hasn't loaded yet.
+  const allInvoices = window._fbInvoices || JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  const inv = allInvoices.find(i=>i.id===id);
   if(!inv){ toast("ইনভয়েস পাওয়া যায়নি", 'err'); return; }
 
   _previewInvoiceId = id;
 
-  // Build preview HTML
   const statusColor = inv.status==='পরিশোধিত'?'#16a34a':inv.status==='বাকি'?'#dc2626':'#d97706';
   const itemRows = (inv.items||[]).map((item,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border);">
@@ -2513,7 +2533,6 @@ function openEditInvoice(id){
     </div>`;
 
   document.getElementById('previewInvoiceContent').innerHTML = html;
-  // Close other modals before opening preview
   closeModal('savedInvoicesModal');
   openModal('previewInvoiceModal');
 }
@@ -2523,8 +2542,9 @@ function openEditFromPreview(){
   if(!id){ return; }
   closeModal('previewInvoiceModal');
 
-  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
-  const inv = saved.find(i=>i.id===id);
+  // Always read from Firebase cache as source of truth
+  const allInvoices = window._fbInvoices || JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+  const inv = allInvoices.find(i=>i.id===id);
   if(!inv){ toast("ইনভয়েস পাওয়া যায়নি", 'err'); return; }
 
   // Populate edit fields
@@ -2603,28 +2623,45 @@ function eiRemoveItem(idx){
 }
 
 function saveEditedInvoice(){
-  const id       = parseInt(document.getElementById('eiInvoiceId').value);
-  const saved    = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
-  const idx      = saved.findIndex(i=>i.id===id);
-  if(idx===-1){ toast("ইনভয়েস পাওয়া যায়নি", 'err'); return; }
+  const id = parseInt(document.getElementById('eiInvoiceId').value);
 
-  saved[idx].customer    = document.getElementById('eiCustomer').value.trim();
-  saved[idx].custPhone   = document.getElementById('eiPhone').value.trim();
-  saved[idx].custAddress = document.getElementById('eiAddress').value.trim();
-  saved[idx].paid        = parseFloat(document.getElementById('eiPaid').value)||0;
-  saved[idx].due         = parseFloat(document.getElementById('eiDue').value)||0;
-  saved[idx].status      = document.getElementById('eiStatus').value;
-  saved[idx].items       = JSON.parse(JSON.stringify(eiItems));
-  saved[idx].total       = eiItems.reduce((s,i)=>s+Number(i.total||0),0);
+  // Build updated record from current form fields — no localStorage dependency.
+  // This works on any device because we write directly to Firebase.
+  const updatedInvoice = {
+    id,
+    // Preserve original date/time fields from Firebase cache if available
+    ...(()=>{
+      const allInv = window._fbInvoices || JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+      const orig = allInv.find(i=>i.id===id) || {};
+      return { date: orig.date||'', dateStr: orig.dateStr||'', timeStr: orig.timeStr||'' };
+    })(),
+    customer:    document.getElementById('eiCustomer').value.trim(),
+    custPhone:   document.getElementById('eiPhone').value.trim(),
+    custAddress: document.getElementById('eiAddress').value.trim(),
+    paid:        parseFloat(bnToEn(document.getElementById('eiPaid').value||'0'))||0,
+    due:         parseFloat(bnToEn(document.getElementById('eiDue').value||'0'))||0,
+    status:      document.getElementById('eiStatus').value,
+    items:       JSON.parse(JSON.stringify(eiItems)),
+    total:       eiItems.reduce((s,i)=>s+Number(i.total||0),0)
+  };
 
-  localStorage.setItem('savedInvoices', JSON.stringify(saved));
-  if(window.fb) window.fb.saveInvoice(saved[idx]); // Firebase
+  // Write to Firebase — this triggers onSnapshot on all devices automatically
+  if(window.fb){
+    window.fb.saveInvoice(updatedInvoice).catch(e=>console.error('Invoice save error',e));
+  }
+  // Also update localStorage for this device's offline fallback
+  try{
+    let saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+    const idx = saved.findIndex(i=>i.id===id);
+    if(idx !== -1) saved[idx] = updatedInvoice;
+    else saved.unshift(updatedInvoice);
+    localStorage.setItem('savedInvoices', JSON.stringify(saved));
+  }catch(e){}
+
   toast(`ইনভয়েস #${id} আপডেট হয়েছে ✅`);
   closeModal('editInvoiceModal');
-  // Refresh any open views
   if(document.getElementById('savedInvoicesModal').classList.contains('open')) renderSavedInvoices();
   if(currentBillTab==='saved') renderBillBoxInvoices();
-  // Reopen preview with updated data
   openEditInvoice(id);
 }
 
@@ -3031,23 +3068,27 @@ function updateSlBadge(){
 ═══════════════════════════════════════════ */
 function saveShortListAsHistory(){
   if(!shortList.length){ toast("তালিকা খালি আছে", 'err'); return; }
-  const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
   const entry = {
     id: Date.now(),
     savedAt: new Date().toLocaleDateString('bn-BD',{day:'numeric',month:'long',year:'numeric'}),
     savedTime: new Date().toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'}),
     items: JSON.parse(JSON.stringify(shortList))
   };
-  histories.unshift(entry);
-  histories.splice(30);
-  localStorage.setItem('slHistory', JSON.stringify(histories));
-  if(window.fb) window.fb.saveSlHistory(entry); // Firebase
+  // Write to Firebase first — onSnapshot will update all devices including this one
+  if(window.fb){
+    window.fb.saveSlHistory(entry).catch(e=>console.error('slHistory save error',e));
+  }
+  // Also update localStorage cache on this device
+  try{
+    const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+    histories.unshift(entry);
+    histories.splice(30);
+    localStorage.setItem('slHistory', JSON.stringify(histories));
+  }catch(e){}
   toast("তালিকা হিস্ট্রিতে সেভ হয়েছে ✅");
-  // Show history section after save
   const sec = document.getElementById('slHistorySection');
   sec.style.display = 'block';
   renderSlHistory();
-  // TASK 2: clear shortlist after successful save
   resetShortListAfterSave();
 }
 
@@ -3184,9 +3225,10 @@ function renderSlHistory(){
 let _previewSlId = null;
 
 function openSlPreview(id){
-  const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+  // Always use Firebase cache as source of truth for cross-device access
+  const histories = window._fbSlHistory || JSON.parse(localStorage.getItem('slHistory')||'[]');
   const h = histories.find(e=>e.id===id);
-  if(!h) return;
+  if(!h){ toast("তালিকা পাওয়া যায়নি", 'err'); return; }
   _previewSlId = id;
 
   const pending = h.items.filter(i=>!i.done);
@@ -3221,26 +3263,29 @@ function loadSlFromPreview(){
 }
 
 function deleteSlHistory(id){
-  let histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
-  histories = histories.filter(h=>h.id!==id);
-  localStorage.setItem('slHistory', JSON.stringify(histories));
-  if(window.fb) window.fb.deleteSlHistory(id); // Firebase
+  // Firebase delete is authoritative — triggers onSnapshot on all devices
+  if(window.fb) window.fb.deleteSlHistory(id).catch(e=>console.error('Delete slHistory error',e));
+  // Also remove from localStorage cache on this device
+  try{
+    let histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+    histories = histories.filter(h=>h.id!==id);
+    localStorage.setItem('slHistory', JSON.stringify(histories));
+  }catch(e){}
   renderSlHistory();
   toast("হিস্ট্রি মুছে গেছে", 'info');
 }
 
 /* FIX 2 — Load a saved shortlist history back into active list for editing */
 function loadSlHistoryForEdit(id){
-  const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
+  // Always use Firebase cache as source of truth for cross-device access
+  const histories = window._fbSlHistory || JSON.parse(localStorage.getItem('slHistory')||'[]');
   const h = histories.find(e=>e.id===id);
-  if(!h) return;
+  if(!h){ toast("তালিকা পাওয়া যায়নি", 'err'); return; }
   if(shortList.length){
     if(!confirm(`বর্তমান তালিকা সরিয়ে "${h.savedAt}" এর তালিকা লোড করবেন?`)) return;
   }
-  // Deep copy so editing the active list doesn't mutate history
   shortList = JSON.parse(JSON.stringify(h.items));
   saveShortList();
-  // Scroll shortlist body to top so user sees the loaded items
   const body = document.querySelector('.sl-body');
   if(body) body.scrollTop = 0;
   toast(`"${h.savedAt}" তালিকা লোড হয়েছে — এখন সম্পাদনা করুন ✅`);
@@ -3258,7 +3303,10 @@ function bootApp(){
   search.value = '';
   search.setAttribute('value', '');
 
-  // Load from localStorage first (instant render while Firebase connects)
+  // Use localStorage as instant-render fallback ONLY.
+  // Firebase onSnapshot listeners (set up in the module script) will
+  // fire within milliseconds and override these with the authoritative
+  // cloud data, ensuring all devices always see the same state.
   try {
     const raw = localStorage.getItem('backup');
     products = raw ? JSON.parse(raw) : [];
@@ -3269,7 +3317,6 @@ function bootApp(){
     billCart = raw2 ? JSON.parse(raw2) : [];
   } catch(e){ billCart = []; }
 
-  // Load shortList from localStorage initially
   try {
     const raw3 = localStorage.getItem('shortList');
     shortList = raw3 ? JSON.parse(raw3) : [];
@@ -3279,8 +3326,6 @@ function bootApp(){
   renderBill();
   updateStats();
   updateSlBadge();
-  // Firebase real-time listeners take over automatically after bootApp
-  // (set up in the Firebase module script's DOMContentLoaded handler)
 }
 
 // Run on DOMContentLoaded (normal page load)
