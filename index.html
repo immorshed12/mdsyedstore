@@ -18,7 +18,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getFirestore, doc, collection,
   setDoc, deleteDoc, onSnapshot,
-  getDoc, getDocs, writeBatch
+  getDoc, getDocs, writeBatch, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ── Firebase config ── */
@@ -34,6 +34,37 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db    = getFirestore(fbApp);
 
+/* ── Data sanitizer: Firestore rejects undefined, NaN, Infinity, functions.
+   Also does a JSON round-trip as final guard — guarantees plain serializable data.
+   Raw Unicode (Bangla text) is kept as-is; never encoded/decoded. ── */
+function _sanitize(obj){
+  // First pass: recursive clean
+  function _clean(v){
+    if(v === null || v === undefined) return null;
+    if(typeof v === 'number') return (isNaN(v)||!isFinite(v)) ? 0 : v;
+    if(typeof v === 'string') return v;   // Bangla/Unicode kept raw — no encoding
+    if(typeof v === 'boolean') return v;
+    if(Array.isArray(v)) return v.map(_clean);
+    if(typeof v === 'object'){
+      const out = {};
+      for(const [k, val] of Object.entries(v)){
+        if(typeof val === 'function') continue;
+        if(val === undefined) continue;
+        out[k] = _clean(val);
+      }
+      return out;
+    }
+    return String(v);
+  }
+  // Second pass: JSON round-trip removes any remaining non-serializable values
+  try{
+    return JSON.parse(JSON.stringify(_clean(obj)));
+  }catch(e){
+    console.warn('_sanitize JSON round-trip failed, using empty object', e);
+    return {};
+  }
+}
+
 /* ════════════════════════════════════════════
    FIREBASE HELPER — expose to global scope
    so existing functions can call fb.*()
@@ -42,97 +73,134 @@ window.fb = {
 
   /* ── PRODUCTS ── */
   async saveProduct(product){
-    await setDoc(doc(db,'products', String(product.id)), product);
+    if(!product || !product.id) return;
+    await setDoc(doc(db,'products', String(product.id)), _sanitize(product));
   },
   async deleteProduct(id){
+    if(!id) return;
     await deleteDoc(doc(db,'products', String(id)));
   },
-  listenProducts(callback){
+  listenProducts(callback, onError){
     return onSnapshot(collection(db,'products'), snap=>{
       const list = [];
       snap.forEach(d => list.push(d.data()));
-      // Sort by id ascending (same as original order)
-      list.sort((a,b)=> a.id - b.id);
+      list.sort((a,b)=> (a.id||0) - (b.id||0));
       callback(list);
-    });
+    }, err=>{ console.warn('listenProducts error',err); if(onError) onError(err); });
   },
 
-  /* ── INVOICE COUNTER ── */
+  /* ── INVOICE COUNTER: transaction-safe increment ── */
+  async getAndIncrementCounter(){
+    const ref = doc(db,'meta','invoiceCounter');
+    let newVal = 1001;
+    await runTransaction(db, async tx=>{
+      const snap = await tx.get(ref);
+      newVal = snap.exists() ? (snap.data().value||1000) + 1 : 1001;
+      tx.set(ref, {value: newVal});
+    });
+    return newVal;
+  },
   async saveInvoiceCounter(n){
-    await setDoc(doc(db,'meta','invoiceCounter'),{value:n});
+    await setDoc(doc(db,'meta','invoiceCounter'),{value: Number(n)||1000});
   },
   async getInvoiceCounter(){
     const d = await getDoc(doc(db,'meta','invoiceCounter'));
-    return d.exists() ? d.data().value : 1000;
+    return d.exists() ? (d.data().value||1000) : 1000;
   },
 
   /* ── SAVED INVOICES ── */
   async saveInvoice(invoice){
-    await setDoc(doc(db,'savedInvoices', String(invoice.id)), invoice);
+    if(!invoice || !invoice.id) return;
+    await setDoc(doc(db,'savedInvoices', String(invoice.id)), _sanitize(invoice));
   },
   async deleteInvoice(id){
+    if(!id) return;
     await deleteDoc(doc(db,'savedInvoices', String(id)));
   },
-  listenInvoices(callback){
+  listenInvoices(callback, onError){
     return onSnapshot(collection(db,'savedInvoices'), snap=>{
       const list = [];
       snap.forEach(d => list.push(d.data()));
-      list.sort((a,b)=> b.id - a.id); // newest first
+      list.sort((a,b)=> (b.id||0) - (a.id||0));
       callback(list);
-    });
+    }, err=>{ console.warn('listenInvoices error',err); if(onError) onError(err); });
   },
 
   /* ── SHORT LIST (active) ── */
   async saveShortList(items){
-    await setDoc(doc(db,'meta','shortList'),{items});
+    const safe = Array.isArray(items) ? items.map(i=>_sanitize(i)) : [];
+    await setDoc(doc(db,'meta','shortList'),{items: safe});
   },
-  listenShortList(callback){
+  listenShortList(callback, onError){
     return onSnapshot(doc(db,'meta','shortList'), snap=>{
       callback(snap.exists() ? (snap.data().items||[]) : []);
-    });
+    }, err=>{ console.warn('listenShortList error',err); if(onError) onError(err); });
   },
 
   /* ── SHORT LIST HISTORY ── */
   async saveSlHistory(entry){
-    await setDoc(doc(db,'slHistory', String(entry.id)), entry);
+    if(!entry || !entry.id) return;
+    await setDoc(doc(db,'slHistory', String(entry.id)), _sanitize(entry));
   },
   async deleteSlHistory(id){
+    if(!id) return;
     await deleteDoc(doc(db,'slHistory', String(id)));
   },
-  listenSlHistory(callback){
+  listenSlHistory(callback, onError){
     return onSnapshot(collection(db,'slHistory'), snap=>{
       const list = [];
       snap.forEach(d => list.push(d.data()));
-      list.sort((a,b)=> b.id - a.id);
+      list.sort((a,b)=> (b.id||0) - (a.id||0));
       callback(list);
-    });
+    }, err=>{ console.warn('listenSlHistory error',err); if(onError) onError(err); });
   },
 
   /* ── MIGRATE: push all localStorage data to Firebase once ── */
   async migrateFromLocalStorage(){
     const batch = writeBatch(db);
+    let opCount = 0;
+    const MAX_BATCH = 490; // Firestore limit is 500 per batch
+
+    const flushBatch = async ()=>{
+      await batch.commit();
+      opCount = 0;
+    };
 
     // products
     const prods = JSON.parse(localStorage.getItem('backup')||'[]');
-    prods.forEach(p => batch.set(doc(db,'products',String(p.id)), p));
+    for(const p of prods){
+      if(!p || !p.id) continue;
+      batch.set(doc(db,'products',String(p.id)), _sanitize(p));
+      if(++opCount >= MAX_BATCH) await flushBatch();
+    }
 
     // savedInvoices
     const invs = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
-    invs.forEach(inv => batch.set(doc(db,'savedInvoices',String(inv.id)), inv));
+    for(const inv of invs){
+      if(!inv || !inv.id) continue;
+      batch.set(doc(db,'savedInvoices',String(inv.id)), _sanitize(inv));
+      if(++opCount >= MAX_BATCH) await flushBatch();
+    }
 
     // shortList
     const sl = JSON.parse(localStorage.getItem('shortList')||'[]');
-    batch.set(doc(db,'meta','shortList'),{items:sl});
+    batch.set(doc(db,'meta','shortList'),{items: sl.map(i=>_sanitize(i))});
+    opCount++;
 
     // slHistory
     const slH = JSON.parse(localStorage.getItem('slHistory')||'[]');
-    slH.forEach(h => batch.set(doc(db,'slHistory',String(h.id)), h));
+    for(const h of slH){
+      if(!h || !h.id) continue;
+      batch.set(doc(db,'slHistory',String(h.id)), _sanitize(h));
+      if(++opCount >= MAX_BATCH) await flushBatch();
+    }
 
     // invoiceCounter
     const ic = parseInt(localStorage.getItem('invoiceCounter')||'1000');
-    batch.set(doc(db,'meta','invoiceCounter'),{value:ic});
+    batch.set(doc(db,'meta','invoiceCounter'),{value: isNaN(ic)?1000:ic});
+    opCount++;
 
-    await batch.commit();
+    if(opCount > 0) await batch.commit();
     localStorage.setItem('fb_migrated','1');
     console.log('✅ Migration to Firebase complete');
   }
@@ -140,8 +208,12 @@ window.fb = {
 
 /* ════════════════════════════════════════════
    BOOT: start real-time listeners once DOM ready
+   Guard: only runs once even if DOMContentLoaded fires twice
 ════════════════════════════════════════════ */
+let _fbBootDone = false;
 document.addEventListener('DOMContentLoaded', async ()=>{
+  if(_fbBootDone) return;
+  _fbBootDone = true;
 
   // ── Show syncing indicator ──
   window._fbReady = false;
@@ -159,6 +231,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     b.style.background = color;
     b.textContent = txt;
   };
+  window._showSyncBadge = showSyncBadge; // expose for reconnect use
   showSyncBadge('🔄 সংযুক্ত হচ্ছে...');
 
   // ── Migrate old localStorage data to Firebase (runs only once) ──
@@ -178,18 +251,20 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   // ── invoiceCounter: load once from Firebase ──
   try{
     const ic = await window.fb.getInvoiceCounter();
+    invoiceCounter = ic;
     window.invoiceCounter = ic;
-    // sync the global variable the app uses
-    if(typeof invoiceCounter !== 'undefined') window.invoiceCounter = ic;
   } catch(e){ console.warn('invoiceCounter load failed',e); }
+
+  // ── Helper: on listener error show offline badge ──
+  const _onListenerError = (name, err)=>{
+    console.warn(name + ' listener error (non-fatal):', err && err.message || err);
+    showSyncBadge('🔴 সংযোগ বিচ্ছিন্ন — রিফ্রেশ করুন','#dc2626');
+  };
 
   // ── PRODUCTS: real-time listener — Firebase is source of truth ──
   window.fb.listenProducts(list=>{
-    // Update BOTH window.products AND the module-level products variable
-    // so every device always sees the same list from Firestore
     products = list;
     window.products = list;
-    // Also keep localStorage in sync so offline fallback is fresh
     try{ localStorage.setItem('backup', JSON.stringify(list)); }catch(e){}
     if(typeof renderData === 'function') renderData();
     if(typeof updateStats === 'function') updateStats();
@@ -197,11 +272,10 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       window._fbReady = true;
       showSyncBadge('🟢 সংযুক্ত','#16a34a');
     }
-  });
+  }, err=>_onListenerError('products', err));
 
   // ── SAVED INVOICES: real-time listener ──
   window.fb.listenInvoices(list=>{
-    // Firebase is source of truth — update memory cache AND localStorage
     window._fbInvoices = list;
     try{ localStorage.setItem('savedInvoices', JSON.stringify(list)); }catch(e){}
     if(typeof renderSavedInvoices === 'function' &&
@@ -210,25 +284,23 @@ document.addEventListener('DOMContentLoaded', async ()=>{
     if(typeof renderBillBoxInvoices === 'function' &&
        window.currentBillTab === 'saved')
       renderBillBoxInvoices();
-  });
+  }, err=>_onListenerError('invoices', err));
 
   // ── SHORT LIST: real-time listener ──
   window.fb.listenShortList(items=>{
-    // Firebase is source of truth — update both memory and localStorage
     window.shortList = items;
     shortList = items;
     try{ localStorage.setItem('shortList', JSON.stringify(items)); }catch(e){}
     if(typeof renderShortList === 'function') renderShortList();
     if(typeof updateSlBadge === 'function') updateSlBadge();
-  });
+  }, err=>_onListenerError('shortList', err));
 
   // ── SL HISTORY: real-time listener ──
   window.fb.listenSlHistory(list=>{
-    // Firebase is source of truth — update both memory and localStorage
     window._fbSlHistory = list;
     try{ localStorage.setItem('slHistory', JSON.stringify(list)); }catch(e){}
     if(typeof renderSlHistory === 'function') renderSlHistory();
-  });
+  }, err=>_onListenerError('slHistory', err));
 
 });
 </script>
@@ -1676,20 +1748,14 @@ input::placeholder{color:var(--muted2);}
       <div class="pwa-app-row">
         <div class="pwa-app-icon">
           <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Store building -->
             <rect x="6" y="18" width="32" height="22" rx="3" fill="white" fill-opacity="0.95"/>
-            <!-- Roof / awning -->
             <path d="M3 18 L22 7 L41 18 Z" fill="white" fill-opacity="0.7"/>
-            <!-- Door -->
             <rect x="17" y="27" width="10" height="13" rx="2" fill="#1e40af"/>
-            <!-- Window left -->
             <rect x="8" y="22" width="7" height="7" rx="1.5" fill="#93c5fd"/>
-            <!-- Window right -->
             <rect x="29" y="22" width="7" height="7" rx="1.5" fill="#93c5fd"/>
-            <!-- Receipt strip at bottom -->
             <rect x="8" y="37" width="28" height="2" rx="1" fill="white" fill-opacity="0.4"/>
-            <!-- Taka sign on door -->
-            <text x="22" y="35" text-anchor="middle" font-size="8" font-weight="bold" fill="white" font-family="serif">৳</text>
+            <!-- POS label (ASCII only - no Bangla) -->
+            <text x="22" y="35" text-anchor="middle" font-size="6" font-weight="bold" fill="white" font-family="monospace">POS</text>
           </svg>
         </div>
         <div class="pwa-app-info">
@@ -2523,45 +2589,64 @@ function downloadInvoice(){
 function printAndSaveInvoice(){
   if(!billCart.length){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
   const f = getInvoiceFields();
-  invoiceCounter++;
-  localStorage.setItem('invoiceCounter', invoiceCounter);
   const now = new Date();
   const subtotal = billCart.reduce((s,i)=>s+Number(i.total||0),0);
-  const record = {
-    id: invoiceCounter,
-    date: now.toISOString(),
-    dateStr: now.toLocaleDateString('bn-BD',{year:'numeric',month:'long',day:'numeric'}),
-    timeStr: now.toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'}),
-    customer: f.customer,
-    custPhone: f.custPhone,
-    custAddress: f.custAddress,
-    items: JSON.parse(JSON.stringify(billCart)),
-    total: subtotal,
-    paid: parseFloat(bnToEn(f.paid||'0'))||0,
-    due:  parseFloat(bnToEn(f.due||'0'))||0,
-    status: f.status
+
+  // Use Firebase transaction counter when available (prevents duplicate IDs across devices)
+  // Falls back to local counter if Firebase not ready
+  const _doSave = (counter)=>{
+    invoiceCounter = counter;
+    localStorage.setItem('invoiceCounter', invoiceCounter);
+    const record = {
+      id: invoiceCounter,
+      date: now.toISOString(),
+      dateStr: now.toLocaleDateString('bn-BD',{year:'numeric',month:'long',day:'numeric'}),
+      timeStr: now.toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'}),
+      customer: f.customer,
+      custPhone: f.custPhone,
+      custAddress: f.custAddress,
+      items: JSON.parse(JSON.stringify(billCart)),
+      total: subtotal,
+      paid: parseFloat(bnToEn(f.paid||'0'))||0,
+      due:  parseFloat(bnToEn(f.due||'0'))||0,
+      status: f.status
+    };
+    // Save to localStorage cache
+    try{
+      const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+      saved.unshift(record);
+      localStorage.setItem('savedInvoices', JSON.stringify(saved));
+    }catch(e){}
+    // Save to Firebase (sanitized)
+    if(window.fb){
+      window.fb.saveInvoice(record).catch(e=>console.error('Invoice save error',e));
+    }
+    // Print
+    const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
+    const pw = window.open('','','width=800,height=700');
+    if(pw){
+      pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+        <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+        <title>Invoice #${invoiceCounter}</title>
+        <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}@media print{body{padding:20px;}}</style>
+        </head><body>${h}</body></html>`);
+      pw.document.close(); pw.focus();
+      setTimeout(()=>{ try{ pw.print(); }catch(e){} }, 700);
+    }
+    toast(`ইনভয়েস #${invoiceCounter} সেভ হয়েছে ✅`);
+    closeModal('invoiceModal');
+    resetBillAfterSave();
   };
-  const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
-  saved.unshift(record);
-  localStorage.setItem('savedInvoices', JSON.stringify(saved));
-  if(window.fb){
-    window.fb.saveInvoice(record);
-    window.fb.saveInvoiceCounter(invoiceCounter);
+
+  if(window.fb && window._fbReady){
+    // Use atomic Firebase transaction to get unique counter
+    window.fb.getAndIncrementCounter()
+      .then(counter=>_doSave(counter))
+      .catch(()=>{ invoiceCounter++; _doSave(invoiceCounter); });
+  } else {
+    invoiceCounter++;
+    _doSave(invoiceCounter);
   }
-  const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
-  const pw = window.open('','','width=800,height=700');
-  if(pw){
-    pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-      <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-      <title>ইনভয়েস #${invoiceCounter}</title>
-      <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}@media print{body{padding:20px;}}</style>
-      </head><body>${h}</body></html>`);
-    pw.document.close(); pw.focus();
-    setTimeout(()=>{ try{ pw.print(); }catch(e){} }, 700);
-  }
-  toast(`ইনভয়েস #${invoiceCounter} সেভ হয়েছে ✅`);
-  closeModal('invoiceModal');
-  resetBillAfterSave();
 }
 
 /* ═══════════════════════════════════════════
@@ -2988,35 +3073,38 @@ document.querySelectorAll('.modal-overlay').forEach(o=>{
    - Splash screen meta tags injected at boot
 ═══════════════════════════════════════════ */
 
-/* ── SVG Icon (store / POS themed) ── */
+/* ── SVG Icon (store/POS themed — ASCII only, no btoa needed) ── */
 const _PWA_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="96" fill="#1e40af"/>
-  <!-- store building -->
   <rect x="96" y="240" width="320" height="224" rx="24" fill="white" fill-opacity="0.95"/>
-  <!-- roof -->
   <polygon points="56,240 256,96 456,240" fill="white" fill-opacity="0.75"/>
-  <!-- door -->
   <rect x="196" y="320" width="120" height="144" rx="16" fill="#1e40af"/>
-  <!-- windows -->
   <rect x="112" y="272" width="80" height="80" rx="12" fill="#93c5fd"/>
   <rect x="320" y="272" width="80" height="80" rx="12" fill="#93c5fd"/>
-  <!-- taka sign -->
-  <text x="256" y="410" text-anchor="middle" font-size="72" font-weight="bold" fill="white" font-family="serif">৳</text>
+  <text x="256" y="418" text-anchor="middle" font-size="80" font-weight="bold" fill="white" font-family="serif">BDT</text>
 </svg>`;
 
-const _PWA_ICON_URI  = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(_PWA_ICON_SVG)));
+/* Safe data URI — encodeURIComponent handles all Unicode without btoa */
+const _PWA_ICON_URI = 'data:image/svg+xml,' + encodeURIComponent(_PWA_ICON_SVG);
 
 /* ── Generate PNG icon from SVG at given size ── */
 function _genPngIcon(size){
   return new Promise(resolve=>{
     const img = new Image();
+    // Timeout fallback — some browsers block SVG-to-canvas, resolve with SVG URI
+    const t = setTimeout(()=>resolve(_PWA_ICON_URI), 2000);
     img.onload = ()=>{
-      const c = document.createElement('canvas');
-      c.width = c.height = size;
-      c.getContext('2d').drawImage(img,0,0,size,size);
-      resolve(c.toDataURL('image/png'));
+      clearTimeout(t);
+      try{
+        const c = document.createElement('canvas');
+        c.width = c.height = size;
+        c.getContext('2d').drawImage(img,0,0,size,size);
+        resolve(c.toDataURL('image/png'));
+      }catch(e){
+        resolve(_PWA_ICON_URI); // canvas tainted — fallback to SVG
+      }
     };
-    img.onerror = ()=> resolve(_PWA_ICON_URI); // fallback to SVG
+    img.onerror = ()=>{ clearTimeout(t); resolve(_PWA_ICON_URI); };
     img.src = _PWA_ICON_URI;
   });
 }
@@ -3070,11 +3158,31 @@ self.addEventListener('fetch',e=>{
 
 function registerSW(){
   if(!('serviceWorker' in navigator)) return;
-  const blob = new Blob([SW_CODE],{type:'application/javascript'});
-  const url = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(url,{scope:'/'})
-    .then(reg=>{ console.log('SW registered',reg.scope); })
-    .catch(err=>{ console.warn('SW registration failed',err); });
+
+  const loc = window.location;
+  // Only register on real deployments — blob:, file:, and preview iframes will fail
+  const isRealUrl = loc.protocol === 'https:' ||
+                    loc.hostname === 'localhost' ||
+                    loc.hostname === '127.0.0.1';
+  if(!isRealUrl){
+    console.log('SW skipped: not on https/localhost (protocol:', loc.protocol, ')');
+    return;
+  }
+
+  // Use a Blob-URL SW only as a last resort — it won't work on all browsers.
+  // Instead, write the SW inline as a data: URL which has better support.
+  // Actually the safest approach for a single-file app is a data: URI SW.
+  // Most modern browsers support registering from a same-origin script URL.
+  // We create a same-origin blob and register it with the real page scope.
+  try{
+    const blob = new Blob([SW_CODE], {type:'application/javascript'});
+    const blobUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(blobUrl, {scope: loc.pathname.replace(/\/[^/]*$/, '/') || '/'})
+      .then(reg=>{ console.log('SW registered, scope:', reg.scope); })
+      .catch(err=>{ console.warn('SW registration failed (non-critical):', err.message); });
+  } catch(e){
+    console.warn('SW setup error (non-critical):', e.message);
+  }
 }
 
 /* ── Manifest: inject with proper icons ── */
