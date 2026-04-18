@@ -833,26 +833,96 @@ input::placeholder{color:var(--muted2);}
 /* ═══════════════════════════════════════════
    INSTALL BANNER
 ═══════════════════════════════════════════ */
-#installBanner{
-  position:fixed;bottom:0;left:0;right:0;
-  background:linear-gradient(90deg,#1e40af,#2563eb);
-  padding:12px 18px;display:flex;align-items:center;gap:12px;
-  z-index:1500;box-shadow:0 -4px 20px rgba(30,64,175,.35);
-  transform:translateY(100%);transition:transform .35s ease;
+/* ═══════════════════════════════════════════
+   PWA INSTALL MODAL — Professional
+═══════════════════════════════════════════ */
+#pwaInstallOverlay{
+  position:fixed;inset:0;
+  background:rgba(15,23,42,0.7);
+  z-index:9000;
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0 0 env(safe-area-inset-bottom,0) 0;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease;
+  backdrop-filter:blur(4px);
 }
-#installBanner.show{transform:translateY(0);}
-.ib-text{flex:1;color:#fff;font-size:14px;font-weight:600;}
-.ib-text small{display:block;font-size:11px;opacity:.75;font-weight:400;}
-.ib-btn-install{
-  padding:9px 16px;background:#fff;color:var(--primary);
-  border:none;border-radius:9px;font-size:13px;font-weight:700;
-  cursor:pointer;font-family:var(--font);white-space:nowrap;
+#pwaInstallOverlay.show{opacity:1;pointer-events:all;}
+#pwaInstallCard{
+  background:#fff;
+  border-radius:24px 24px 0 0;
+  padding:8px 0 0;
+  width:100%;max-width:480px;
+  transform:translateY(100%);
+  transition:transform .35s cubic-bezier(.34,1.1,.64,1);
+  box-shadow:0 -8px 40px rgba(15,23,42,.22);
+  overflow:hidden;
 }
-.ib-btn-close{
-  width:30px;height:30px;border:none;border-radius:8px;
-  background:rgba(255,255,255,.2);color:#fff;font-size:18px;
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
+#pwaInstallOverlay.show #pwaInstallCard{transform:translateY(0);}
+.pwa-handle{
+  width:40px;height:4px;border-radius:2px;
+  background:#e2e8f0;margin:0 auto 18px;
 }
+.pwa-card-body{padding:0 24px 28px;}
+.pwa-app-row{
+  display:flex;align-items:center;gap:16px;
+  margin-bottom:18px;
+}
+.pwa-app-icon{
+  width:72px;height:72px;border-radius:18px;
+  flex-shrink:0;
+  background:linear-gradient(135deg,#1e40af,#2563eb);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 20px rgba(37,99,235,.35);
+  overflow:hidden;
+}
+.pwa-app-icon svg{ width:44px;height:44px; }
+.pwa-app-info{ flex:1; }
+.pwa-app-name{font-size:18px;font-weight:700;color:var(--text);}
+.pwa-app-desc{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4;}
+.pwa-features{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  margin-bottom:20px;
+}
+.pwa-feat{
+  display:flex;align-items:center;gap:8px;
+  background:#f8faff;border:1px solid var(--border);
+  border-radius:10px;padding:9px 11px;
+  font-size:12px;font-weight:600;color:var(--text);
+}
+.pwa-feat-icon{font-size:16px;flex-shrink:0;}
+.pwa-install-btn{
+  width:100%;padding:15px;border:none;border-radius:14px;
+  background:linear-gradient(135deg,#1e40af,#2563eb);
+  color:#fff;font-size:16px;font-weight:700;
+  font-family:var(--font);cursor:pointer;
+  box-shadow:0 4px 20px rgba(37,99,235,.35);
+  transition:filter .2s,transform .15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-bottom:10px;
+}
+.pwa-install-btn:hover{filter:brightness(1.08);}
+.pwa-install-btn:active{transform:scale(.98);}
+.pwa-dismiss-btn{
+  width:100%;padding:11px;border:1.5px solid var(--border);border-radius:14px;
+  background:transparent;color:var(--muted);font-size:14px;font-weight:600;
+  font-family:var(--font);cursor:pointer;transition:all .2s;
+}
+.pwa-dismiss-btn:hover{border-color:var(--border2);color:var(--text);}
+
+/* iOS install instructions panel */
+#iosInstallPanel{
+  display:none;
+  background:#f0f4ff;border:1px solid #bfdbfe;
+  border-radius:12px;padding:14px 16px;
+  margin-bottom:14px;font-size:13px;color:var(--text);
+  line-height:1.8;
+}
+.ios-step{ display:flex;align-items:center;gap:8px;margin-bottom:6px; }
+.ios-step:last-child{ margin-bottom:0; }
+.ios-icon{ font-size:18px;flex-shrink:0; }
+
+/* Old banner kept but hidden — replaced by modal */
+#installBanner{ display:none !important; }
 
 /* ═══════════════════════════════════════════
    SHORT LIST — Floating Button + Popup (Part 5)
@@ -960,16 +1030,7 @@ input::placeholder{color:var(--muted2);}
 .sl-history-date{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:6px 0 4px;border-top:1px solid var(--border);}
 .sl-empty{text-align:center;padding:24px 14px;color:var(--muted2);font-size:13px;}
 
-/* ── MODE 2: Custom manual product entry panel ── */
-#customProductPanel{
-  margin:0 14px 10px;
-  border:1.5px dashed var(--border2);
-  border-radius:var(--radius);
-  padding:12px 13px;
-  background:#fafbff;
-  display:none;
-}
-#customProductPanel.show{display:block;}
+/* ── MODE 2: Custom manual product entry panel (replaced by smart unified panel) ── */
 .custom-panel-title{
   font-size:11px;font-weight:700;color:var(--muted);
   text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px;
@@ -1235,55 +1296,66 @@ input::placeholder{color:var(--muted2);}
       </div>
     </div>
 
-    <!-- Input Section -->
+    <!-- ═══ UNIFIED SMART INPUT PANEL ═══ -->
     <div class="bill-input-section">
 
-      <!-- Product Search (shared by both modes) -->
+      <!-- Step 1: Product search -->
       <div>
-        <label class="bill-field-label">পণ্য বেছে নিন</label>
-        <input id="billSearch" placeholder="পণ্য টাইপ করুন..." oninput="searchBillProducts()">
+        <label class="bill-field-label">পণ্যের নাম</label>
+        <input id="billSearch" placeholder="পণ্য খুঁজুন বা নতুন নাম লিখুন..." oninput="searchBillProducts()" autocomplete="off">
         <div class="bill-search-results" id="billSearchResults"></div>
+        <!-- Smart type badge -->
+        <div id="smartProductBadge" style="display:none;margin-top:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;display:inline-block;"></div>
       </div>
 
-      <!-- MODE A: quantity → price (ORIGINAL FEATURE — UNCHANGED) -->
-      <div id="panelWeight">
-        <label class="bill-field-label">পরিমাণ / ওজন</label>
-        <input id="billQty" type="text" inputmode="decimal" data-numeric="1" placeholder="পরিমাণ লিখুন" min="0" step="any" oninput="calcFromQty()">
-        <div class="calc-info" id="calcInfoWeight"></div>
-      </div>
+      <!-- Step 2: Smart fields — auto-show after product typed/selected -->
+      <div id="smartFieldsPanel" style="display:none;">
 
-      <!-- MODE B: budget → auto weight (NEW FEATURE) -->
-      <div id="panelPrice" style="display:none;">
-        <label class="bill-field-label">কাস্টমারের বাজেট (৳)</label>
-        <input id="billBudget" type="text" inputmode="decimal" data-numeric="1" placeholder="যেমন: ৫০ টাকার তেল" min="0" step="any" oninput="calcFromBudget()">
-        <div class="calc-info green" id="calcInfoBudget"></div>
-      </div>
+        <!-- Unit row: locked for existing, dropdown for custom -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px;">
+          <div>
+            <label class="bill-field-label">ইউনিট</label>
+            <!-- Locked display for existing products -->
+            <div id="smartUnitLocked"
+              style="display:none;padding:9px 12px;background:#f1f5f9;border:1.5px solid var(--border);border-radius:var(--radius);font-size:13px;font-weight:600;color:var(--muted);"></div>
+            <!-- Dropdown for custom products -->
+            <select id="smartUnitSelect" style="display:none;">
+              <option value="KG">KG (কেজি)</option>
+              <option value="Litre">Litre (লিটার)</option>
+              <option value="Piece">Piece (পিস)</option>
+              <option value="Packet">Packet (প্যাকেট)</option>
+              <option value="Dozen">Dozen (ডজন)</option>
+              <option value="Gram">Gram (গ্রাম)</option>
+            </select>
+          </div>
+          <div>
+            <label class="bill-field-label">একক দাম (৳) <span id="smartPriceHint" style="font-size:10px;color:var(--warning);font-weight:400;"></span></label>
+            <input id="smartPrice" type="text" inputmode="decimal" data-numeric="1" placeholder="দাম লিখুন">
+          </div>
+        </div>
 
-      <!-- Add Button -->
-      <button class="btn btn-success" onclick="addSelectedToBill()">➕ বিলে যোগ করুন</button>
+        <!-- MODE A: quantity → price -->
+        <div id="panelWeight" style="margin-top:2px;">
+          <label class="bill-field-label">পরিমাণ / ওজন</label>
+          <input id="billQty" type="text" inputmode="decimal" data-numeric="1" placeholder="পরিমাণ লিখুন" min="0" step="any" oninput="calcFromQty()">
+          <div class="calc-info" id="calcInfoWeight"></div>
+        </div>
 
-      <!-- MODE 2: Custom / Manual product entry (NEW — does NOT touch saved product list) -->
-      <button class="custom-toggle-btn" id="customToggleBtn" onclick="toggleCustomPanel()">
-        ✏️ কাস্টম পণ্য যোগ করুন (তালিকায় নেই)
-      </button>
+        <!-- MODE B: budget → auto weight -->
+        <div id="panelPrice" style="display:none;margin-top:2px;">
+          <label class="bill-field-label">কাস্টমারের বাজেট (৳)</label>
+          <input id="billBudget" type="text" inputmode="decimal" data-numeric="1" placeholder="যেমন: ৫০ টাকার তেল" min="0" step="any" oninput="calcFromBudget()">
+          <div class="calc-info green" id="calcInfoBudget"></div>
+        </div>
+
+        <div id="smartCalcInfo" style="font-size:12px;font-weight:600;min-height:16px;color:var(--success);"></div>
+
+        <!-- Add Button -->
+        <button class="btn btn-success" onclick="addSmartProductToBill()">➕ বিলে যোগ করুন</button>
+
+      </div><!-- /smartFieldsPanel -->
 
     </div><!-- /bill-input-section -->
-
-    <!-- Custom Product Panel (NEW) -->
-    <div id="customProductPanel">
-      <div class="custom-panel-title">✏️ কাস্টম পণ্য — ইনভয়েস-অনলি</div>
-      <div class="custom-field-row">
-        <input id="customProdName" class="custom-input" placeholder="পণ্যের নাম লিখুন" autocomplete="off">
-        <input id="customProdUnit" class="custom-input" placeholder="ইউনিট (যেমন: KG)">
-      </div>
-      <div class="custom-field-row three">
-        <input id="customProdQty" class="custom-input" type="text" inputmode="decimal" data-numeric="1" placeholder="পরিমাণ">
-        <input id="customProdPrice" class="custom-input" type="text" inputmode="decimal" data-numeric="1" placeholder="একক দাম">
-        <button onclick="addCustomProductToBill()"
-          style="padding:9px 6px;border:none;border-radius:9px;background:var(--warning);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);">➕ যোগ</button>
-      </div>
-      <div id="customCalcInfo" style="font-size:12px;color:var(--warning);font-weight:600;min-height:16px;"></div>
-    </div>
 
     <!-- Bill Items -->
     <div class="bill-items-list">
@@ -1592,11 +1664,68 @@ input::placeholder{color:var(--muted2);}
 <div id="toastRack"></div>
 
 <!-- Install Banner -->
-<div id="installBanner">
-  <div class="ib-text">
-    📱 হোম স্ক্রিনে অ্যাপ ইন্সটল করুন
-    <small>অফলাইনেও ব্যবহার করুন — একদম বিনামূল্যে</small>
+<!-- ═══════════════════════════════════════════
+     PWA PROFESSIONAL INSTALL MODAL
+═══════════════════════════════════════════ -->
+<div id="pwaInstallOverlay" onclick="pwaOverlayClick(event)">
+  <div id="pwaInstallCard">
+    <div class="pwa-handle"></div>
+    <div class="pwa-card-body">
+
+      <!-- App identity row -->
+      <div class="pwa-app-row">
+        <div class="pwa-app-icon">
+          <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Store building -->
+            <rect x="6" y="18" width="32" height="22" rx="3" fill="white" fill-opacity="0.95"/>
+            <!-- Roof / awning -->
+            <path d="M3 18 L22 7 L41 18 Z" fill="white" fill-opacity="0.7"/>
+            <!-- Door -->
+            <rect x="17" y="27" width="10" height="13" rx="2" fill="#1e40af"/>
+            <!-- Window left -->
+            <rect x="8" y="22" width="7" height="7" rx="1.5" fill="#93c5fd"/>
+            <!-- Window right -->
+            <rect x="29" y="22" width="7" height="7" rx="1.5" fill="#93c5fd"/>
+            <!-- Receipt strip at bottom -->
+            <rect x="8" y="37" width="28" height="2" rx="1" fill="white" fill-opacity="0.4"/>
+            <!-- Taka sign on door -->
+            <text x="22" y="35" text-anchor="middle" font-size="8" font-weight="bold" fill="white" font-family="serif">৳</text>
+          </svg>
+        </div>
+        <div class="pwa-app-info">
+          <div class="pwa-app-name">ছৈয়দ স্টোর POS</div>
+          <div class="pwa-app-desc">প্রফেশনাল বিলিং সিস্টেম<br>ইন্সটল করুন — বিনামূল্যে</div>
+        </div>
+      </div>
+
+      <!-- Feature highlights -->
+      <div class="pwa-features">
+        <div class="pwa-feat"><span class="pwa-feat-icon">📶</span>অফলাইনেও চলে</div>
+        <div class="pwa-feat"><span class="pwa-feat-icon">⚡</span>দ্রুত লোড</div>
+        <div class="pwa-feat"><span class="pwa-feat-icon">🔔</span>হোম স্ক্রিনে</div>
+        <div class="pwa-feat"><span class="pwa-feat-icon">🔒</span>ডেটা সুরক্ষিত</div>
+      </div>
+
+      <!-- iOS instructions (shown only on Safari/iOS) -->
+      <div id="iosInstallPanel">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--primary);">📱 iPhone / iPad-এ ইন্সটল করুন</div>
+        <div class="ios-step"><span class="ios-icon">1️⃣</span> নিচের <strong>শেয়ার</strong> বাটন চাপুন <span style="font-size:16px;">⎙</span></div>
+        <div class="ios-step"><span class="ios-icon">2️⃣</span> <strong>"Add to Home Screen"</strong> সিলেক্ট করুন</div>
+        <div class="ios-step"><span class="ios-icon">3️⃣</span> উপরে <strong>"Add"</strong> চাপুন</div>
+      </div>
+
+      <!-- Install button (shown on Android/Desktop) -->
+      <button class="pwa-install-btn" id="pwaInstallBtn" onclick="triggerPwaInstall()">
+        📲 অ্যাপ ইন্সটল করুন
+      </button>
+      <button class="pwa-dismiss-btn" onclick="dismissPwaModal()">পরে করব</button>
+    </div>
   </div>
+</div>
+
+<!-- Keep old banner in DOM (hidden via CSS) so existing JS refs don't break -->
+<div id="installBanner">
+  <div class="ib-text">ইন্সটল করুন<small>অফলাইনেও ব্যবহার করুন</small></div>
   <button class="ib-btn-install" onclick="installPWA()">ইন্সটল করুন</button>
   <button class="ib-btn-close" onclick="dismissInstall()">✕</button>
 </div>
@@ -1664,15 +1793,15 @@ function attachBnInputConverters(){
     'invPaid','invDue',
     'eiPaid','eiDue','eiTotal','eiAddQty','eiAddPrice',
     'slQtyInput',
-    'customProdQty','customProdPrice'
+    'smartPrice'
   ];
   numericIds.forEach(id=>{
     const el = document.getElementById(id);
     if(el){
       el.addEventListener('input', ()=>convertBnDigitsInField(el));
-      // Wire live calc for custom panel fields
-      if(id === 'customProdQty' || id === 'customProdPrice'){
-        el.addEventListener('input', _updateCustomCalc);
+      // Wire live calc for smart panel price field
+      if(id === 'smartPrice'){
+        el.addEventListener('input', ()=>{ if(currentMode==='weight') calcFromQty(); else calcFromBudget(); });
       }
     }
   });
@@ -1919,52 +2048,135 @@ function setMode(m){
 }
 
 /* ═══════════════════════════════════════════
-   BILL — PRODUCT SEARCH
-   Original searchBillProducts logic — unchanged
+   SMART UNIFIED BILL INPUT SYSTEM
+   - Auto-detects existing vs custom product
+   - Existing: unit locked, price editable
+   - Custom: unit dropdown, price empty
+   - One flow for both cases
 ═══════════════════════════════════════════ */
-function searchBillProducts(){
-  let q = normalize(billSearch.value);
-  if(!q){ billSearchResults.style.display='none'; billSearchResults.innerHTML=''; return; }
+let _smartIsExisting = false; // track whether current input is an existing product
 
-  let matches = products.filter(p=>normalize(p.name).includes(q));
-  if(!matches.length){ billSearchResults.style.display='none'; return; }
-
-  billSearchResults.style.display = 'block';
-  billSearchResults.innerHTML = matches.map(p=>
-    `<div class="bill-search-item" onclick="selectBillProduct(${p.id})">
-      <span>${p.name}</span>
-      <span class="bsi-price">৳${p.price}/${p.unit.split(' ')[0]}</span>
-    </div>`
-  ).join('');
-  // TASK 3: prevent mousedown on any result from bubbling to the document
-  // outside-click handler, which would close the popup before onclick fires
-  billSearchResults.onmousedown = e => e.stopPropagation();
+function _showSmartFields(){
+  document.getElementById('smartFieldsPanel').style.display = 'block';
+}
+function _hideSmartFields(){
+  document.getElementById('smartFieldsPanel').style.display = 'none';
+}
+function _setSmartBadge(txt, color){
+  const b = document.getElementById('smartProductBadge');
+  if(!txt){ b.style.display='none'; return; }
+  b.style.display='inline-block';
+  b.style.background = color+'22';
+  b.style.color = color;
+  b.style.border = '1px solid '+color+'44';
+  b.textContent = txt;
 }
 
-// Original selectBillProduct — logic unchanged
+function searchBillProducts(){
+  const q = normalize(billSearch.value);
+
+  // Hide smart fields and reset if search is cleared
+  if(!q){
+    billSearchResults.style.display='none';
+    billSearchResults.innerHTML='';
+    _hideSmartFields();
+    _setSmartBadge('','');
+    _smartIsExisting = false;
+    selectedBillProduct = null;
+    return;
+  }
+
+  const matches = products.filter(p=>normalize(p.name).includes(q));
+
+  if(matches.length){
+    // Show dropdown results
+    billSearchResults.style.display = 'block';
+    billSearchResults.innerHTML = matches.map(p=>
+      `<div class="bill-search-item" onclick="selectBillProduct(${p.id})" onmousedown="event.stopPropagation()">
+        <span>${p.name}</span>
+        <span class="bsi-price">৳${p.price}/${p.unit.split(' ')[0]}</span>
+      </div>`
+    ).join('');
+    billSearchResults.onmousedown = e=>e.stopPropagation();
+  } else {
+    // No match — treat as custom product immediately
+    billSearchResults.style.display='none';
+    billSearchResults.innerHTML='';
+    _activateCustomMode(billSearch.value.trim());
+  }
+}
+
+function _activateCustomMode(name){
+  _smartIsExisting = false;
+  selectedBillProduct = null;
+  // Show unit dropdown, hide locked unit
+  document.getElementById('smartUnitLocked').style.display = 'none';
+  document.getElementById('smartUnitSelect').style.display = 'block';
+  // Clear price, let user fill
+  document.getElementById('smartPrice').value = '';
+  document.getElementById('smartPrice').readOnly = false;
+  document.getElementById('smartPrice').style.background = '';
+  document.getElementById('smartPriceHint').textContent = '(নতুন পণ্য)';
+  _setSmartBadge('✏️ কাস্টম পণ্য', '#d97706');
+  _showSmartFields();
+  document.getElementById('smartPrice').focus();
+}
+
 function selectBillProduct(id){
   selectedBillProduct = products.find(p=>p.id===id);
+  if(!selectedBillProduct) return;
+  _smartIsExisting = true;
+
   billSearch.value = selectedBillProduct.name;
   billSearchResults.style.display = 'none';
   billSearchResults.innerHTML = '';
-  // Trigger calc for whichever mode is active
-  if(currentMode==='weight') calcFromQty();
-  else calcFromBudget();
+
+  // Unit: locked display (not a form input)
+  const unitLabel = (selectedBillProduct.unit||'').split(' ')[0];
+  const unitLocked = document.getElementById('smartUnitLocked');
+  unitLocked.textContent = unitLabel;
+  unitLocked.style.display = 'block';
+  document.getElementById('smartUnitSelect').style.display = 'none';
+
+  // Price: pre-fill from system but fully editable (does NOT write back to DB)
+  const priceEl = document.getElementById('smartPrice');
+  priceEl.value = selectedBillProduct.price;
+  priceEl.readOnly = false;
+  priceEl.style.background = '';
+  document.getElementById('smartPriceHint').textContent = '(সম্পাদনযোগ্য)';
+
+  _setSmartBadge('✅ সিস্টেম পণ্য', '#16a34a');
+  _showSmartFields();
+
+  // Clear qty and calc
+  billQty.value = '';
+  billBudget.value = '';
+  document.getElementById('calcInfoWeight').className='calc-info';
+  document.getElementById('calcInfoWeight').textContent='';
+  document.getElementById('calcInfoBudget').className='calc-info green';
+  document.getElementById('calcInfoBudget').textContent='';
+  document.getElementById('smartCalcInfo').textContent='';
+
+  // Focus qty
+  billQty.focus();
 }
 
 /* ═══════════════════════════════════════════
    MODE A — quantity/weight → price
-   Original logic — unchanged
+   Reads price from smartPrice field (editable by user).
 ═══════════════════════════════════════════ */
 function calcFromQty(){
   const el = document.getElementById('calcInfoWeight');
-  if(!selectedBillProduct || !billQty.value){ el.className='calc-info'; el.textContent=''; return; }
+  const smartPriceVal = document.getElementById('smartPrice').value;
+  const hasProduct = billSearch.value.trim();
+  if(!hasProduct || !billQty.value || !smartPriceVal){ el.className='calc-info'; el.textContent=''; return; }
   const qty = parseFloat(bnToEn(billQty.value));
-  const unitPrice = cleanPrice(selectedBillProduct.price);
-  if(isNaN(qty)||isNaN(unitPrice)||qty<=0){ el.className='calc-info'; el.textContent=''; return; }
+  const unitPrice = parseFloat(bnToEn(smartPriceVal));
+  if(isNaN(qty)||isNaN(unitPrice)||qty<=0||unitPrice<=0){ el.className='calc-info'; el.textContent=''; return; }
   const total = qty * unitPrice;
   el.className = 'calc-info show';
   el.textContent = `💡 ${qty} × ৳${unitPrice} = ৳${total.toFixed(2)}`;
+  document.getElementById('smartCalcInfo').textContent='';
 }
 
 /* ═══════════════════════════════════════════
@@ -1972,138 +2184,95 @@ function calcFromQty(){
 ═══════════════════════════════════════════ */
 function calcFromBudget(){
   const el = document.getElementById('calcInfoBudget');
-  if(!selectedBillProduct || !billBudget.value){ el.className='calc-info green'; el.textContent=''; return; }
+  const smartPriceVal = document.getElementById('smartPrice').value;
+  if(!billBudget.value || !smartPriceVal){ el.className='calc-info green'; el.textContent=''; return; }
   const budget = parseFloat(bnToEn(billBudget.value));
-  const unitPrice = cleanPrice(selectedBillProduct.price);
+  const unitPrice = parseFloat(bnToEn(smartPriceVal));
   if(isNaN(budget)||isNaN(unitPrice)||budget<=0||unitPrice<=0){ el.className='calc-info green'; el.textContent=''; return; }
   const autoQty = budget / unitPrice;
-  const unitLabel = (selectedBillProduct.unit||'').split(' ')[0];
+  // Get unit from the active unit display (locked or dropdown)
+  const unitLabel = _smartIsExisting
+    ? document.getElementById('smartUnitLocked').textContent || 'unit'
+    : document.getElementById('smartUnitSelect').value;
   el.className = 'calc-info green show';
   el.textContent = `⚖️ ৳${budget} ÷ ৳${unitPrice}/${unitLabel} = ${autoQty.toFixed(3)} ${unitLabel}`;
   billQty.value = autoQty.toFixed(3);
 }
 
 /* ═══════════════════════════════════════════
-   ADD TO BILL — original logic exactly preserved
+   SMART UNIFIED ADD TO BILL
+   Handles both existing and custom products.
+   Price is always read from smartPrice field
+   (user-editable; never writes back to DB).
+   Does NOT modify products[] or any stored data.
 ═══════════════════════════════════════════ */
-function addSelectedToBill(){
-  let qty = parseFloat(bnToEn(String(billQty.value).trim()));
-  if(!selectedBillProduct){ toast("পণ্য সিলেক্ট করুন", 'err'); return; }
-  if(!qty || qty <= 0 || isNaN(qty)){ toast("সঠিক পরিমাণ দিন", 'err'); return; }
+function addSmartProductToBill(){
+  const name = billSearch.value.trim();
+  if(!name){ toast("পণ্যের নাম লিখুন", 'err'); billSearch.focus(); return; }
 
-  let existIndex = billCart.findIndex(item=>item.name===selectedBillProduct.name);
-  if(existIndex !== -1){
-    if(!confirm(`${selectedBillProduct.name} ইতিমধ্যে আছে। আবার যোগ করতে চান?`)) return;
-  }
+  const smartPriceVal = bnToEn(document.getElementById('smartPrice').value.trim());
+  const price = parseFloat(smartPriceVal);
+  if(!price || price <= 0 || isNaN(price)){ toast("দাম দিন", 'err'); document.getElementById('smartPrice').focus(); return; }
 
-  let priceText = String(selectedBillProduct.price||'').trim();
-  priceText = bnToEn(priceText).replace(/[^0-9.]/g,'');
-  let cleanP = parseFloat(priceText);
-  if(isNaN(cleanP) || cleanP < 0){ toast("দামে সমস্যা আছে", 'err'); return; }
+  const qty = parseFloat(bnToEn(String(billQty.value).trim()));
+  if(!qty || qty <= 0 || isNaN(qty)){ toast("সঠিক পরিমাণ দিন", 'err'); billQty.focus(); return; }
 
-  let total = qty * cleanP;
-  billCart.push({
-    name: selectedBillProduct.name,
-    qty,
-    total,
-    unitPrice: cleanP,
-    unit: (selectedBillProduct.unit||'').split(' ')[0],
-    mode: currentMode
-  });
+  // Get unit from smart panel
+  const unit = _smartIsExisting
+    ? document.getElementById('smartUnitLocked').textContent.trim() || 'unit'
+    : document.getElementById('smartUnitSelect').value;
 
-  selectedBillProduct = null;
-  billSearch.value = '';
-  billQty.value = '';
-  billBudget.value = '';
-  document.getElementById('calcInfoWeight').className = 'calc-info';
-  document.getElementById('calcInfoWeight').textContent = '';
-  document.getElementById('calcInfoBudget').className = 'calc-info green';
-  document.getElementById('calcInfoBudget').textContent = '';
-
-  toast("বিলে যোগ হয়েছে ✅");
-  renderBill();
-}
-
-/* ═══════════════════════════════════════════
-   MODE 2 — CUSTOM / MANUAL PRODUCT ENTRY
-   Invoice-only. Does NOT touch saved product list.
-   Does NOT modify products[], localStorage backup,
-   or any existing data flow.
-═══════════════════════════════════════════ */
-function toggleCustomPanel(){
-  const panel = document.getElementById('customProductPanel');
-  const btn   = document.getElementById('customToggleBtn');
-  const isOpen = panel.classList.contains('show');
-  panel.classList.toggle('show', !isOpen);
-  btn.classList.toggle('active', !isOpen);
-  if(!isOpen){
-    document.getElementById('customProdName').focus();
-  } else {
-    // Clear fields on close
-    document.getElementById('customProdName').value  = '';
-    document.getElementById('customProdUnit').value  = '';
-    document.getElementById('customProdQty').value   = '';
-    document.getElementById('customProdPrice').value = '';
-    document.getElementById('customCalcInfo').textContent = '';
-  }
-}
-
-function _updateCustomCalc(){
-  const qty   = parseFloat(bnToEn(document.getElementById('customProdQty').value  || '0')) || 0;
-  const price = parseFloat(bnToEn(document.getElementById('customProdPrice').value|| '0')) || 0;
-  const info  = document.getElementById('customCalcInfo');
-  if(qty > 0 && price > 0){
-    info.textContent = `💡 ${qty} × ৳${price} = ৳${(qty * price).toFixed(2)}`;
-  } else {
-    info.textContent = '';
-  }
-}
-
-function addCustomProductToBill(){
-  const nameEl  = document.getElementById('customProdName');
-  const unitEl  = document.getElementById('customProdUnit');
-  const qtyEl   = document.getElementById('customProdQty');
-  const priceEl = document.getElementById('customProdPrice');
-
-  const name  = nameEl.value.trim();
-  const unit  = unitEl.value.trim() || 'পিস';
-  const qty   = parseFloat(bnToEn(qtyEl.value   || '0'));
-  const price = parseFloat(bnToEn(priceEl.value || '0'));
-
-  // Validation
-  if(!name){  toast("পণ্যের নাম দিন", 'err'); nameEl.focus();  return; }
-  if(!qty || qty <= 0){ toast("পরিমাণ দিন", 'err');  qtyEl.focus();  return; }
-  if(!price || price <= 0){ toast("দাম দিন", 'err'); priceEl.focus(); return; }
-  if(isNaN(qty) || isNaN(price)){ toast("সঠিক সংখ্যা দিন", 'err'); return; }
-
-  const total = qty * price;
-
-  // Duplicate check (same as existing flow)
+  // Duplicate check
   const existIndex = billCart.findIndex(item => item.name === name);
   if(existIndex !== -1){
     if(!confirm(`"${name}" ইতিমধ্যে বিলে আছে। আবার যোগ করতে চান?`)) return;
   }
 
-  // Push to billCart — exactly same structure as existing items
   billCart.push({
     name,
     qty,
-    total,
+    total: qty * price,
     unitPrice: price,
     unit,
-    mode: 'custom'   // marks as manual entry; does NOT affect any existing logic
+    mode: _smartIsExisting ? currentMode : 'custom'
   });
 
-  // Clear fields after successful add
-  nameEl.value  = '';
-  unitEl.value  = '';
-  qtyEl.value   = '';
-  priceEl.value = '';
-  document.getElementById('customCalcInfo').textContent = '';
-
+  // Reset entire smart input panel
+  _resetSmartPanel();
   toast(`"${name}" বিলে যোগ হয়েছে ✅`);
   renderBill();
 }
+
+// Keep addSelectedToBill as alias so any existing internal calls still work
+function addSelectedToBill(){ addSmartProductToBill(); }
+
+function _resetSmartPanel(){
+  billSearch.value = '';
+  billQty.value = '';
+  billBudget.value = '';
+  selectedBillProduct = null;
+  _smartIsExisting = false;
+  document.getElementById('smartPrice').value = '';
+  document.getElementById('smartPrice').readOnly = false;
+  document.getElementById('smartPrice').style.background = '';
+  document.getElementById('smartUnitLocked').style.display = 'none';
+  document.getElementById('smartUnitSelect').style.display = 'none';
+  document.getElementById('smartProductBadge').style.display = 'none';
+  document.getElementById('smartPriceHint').textContent = '';
+  document.getElementById('calcInfoWeight').className = 'calc-info';
+  document.getElementById('calcInfoWeight').textContent = '';
+  document.getElementById('calcInfoBudget').className = 'calc-info green';
+  document.getElementById('calcInfoBudget').textContent = '';
+  document.getElementById('smartCalcInfo').textContent = '';
+  billSearchResults.style.display = 'none';
+  billSearchResults.innerHTML = '';
+  _hideSmartFields();
+}
+
+// Legacy stubs — kept so resetBillAfterSave and any other callers don't break
+function toggleCustomPanel(){}
+function _updateCustomCalc(){}
+function addCustomProductToBill(){ addSmartProductToBill(); }
 
 /* ═══════════════════════════════════════════
    RENDER BILL — original logic exactly preserved
@@ -2168,17 +2337,8 @@ function clearBill(){
 function resetBillAfterSave(){
   billCart = [];
   localStorage.setItem("billCart", JSON.stringify(billCart));
-  selectedBillProduct = null;
-  // Clear all bill input fields
-  billSearch.value = '';
-  billQty.value = '';
-  billBudget.value = '';
-  document.getElementById('calcInfoWeight').className = 'calc-info';
-  document.getElementById('calcInfoWeight').textContent = '';
-  document.getElementById('calcInfoBudget').className = 'calc-info green';
-  document.getElementById('calcInfoBudget').textContent = '';
-  billSearchResults.style.display = 'none';
-  billSearchResults.innerHTML = '';
+  // Reset smart input panel (unified: clears search, price, qty, unit, badges)
+  if(typeof _resetSmartPanel === 'function') _resetSmartPanel();
   // Clear invoice modal fields for fresh next use
   document.getElementById('invCustomer').value = '';
   document.getElementById('invCustPhone').value = '';
@@ -2186,15 +2346,6 @@ function resetBillAfterSave(){
   document.getElementById('invPaid').value = '';
   document.getElementById('invDue').value = '';
   document.getElementById('invStatus').value = 'পরিশোধিত';
-  // Reset custom product panel
-  const cp = document.getElementById('customProductPanel');
-  const ct = document.getElementById('customToggleBtn');
-  if(cp){ cp.classList.remove('show'); }
-  if(ct){ ct.classList.remove('active'); }
-  const cpFields = ['customProdName','customProdUnit','customProdQty','customProdPrice'];
-  cpFields.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  const cci = document.getElementById('customCalcInfo');
-  if(cci) cci.textContent='';
   renderBill();
 }
 
@@ -2830,22 +2981,90 @@ document.querySelectorAll('.modal-overlay').forEach(o=>{
 });
 
 /* ═══════════════════════════════════════════
-   PWA — SERVICE WORKER
+   PWA — PROFESSIONAL UPGRADE
+   - Better service worker (network-first for HTML, cache-first for assets)
+   - Rich manifest with proper icons (SVG + PNG fallbacks)
+   - Professional install modal (Android + iOS separate flows)
+   - Splash screen meta tags injected at boot
 ═══════════════════════════════════════════ */
+
+/* ── SVG Icon (store / POS themed) ── */
+const _PWA_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1e40af"/>
+  <!-- store building -->
+  <rect x="96" y="240" width="320" height="224" rx="24" fill="white" fill-opacity="0.95"/>
+  <!-- roof -->
+  <polygon points="56,240 256,96 456,240" fill="white" fill-opacity="0.75"/>
+  <!-- door -->
+  <rect x="196" y="320" width="120" height="144" rx="16" fill="#1e40af"/>
+  <!-- windows -->
+  <rect x="112" y="272" width="80" height="80" rx="12" fill="#93c5fd"/>
+  <rect x="320" y="272" width="80" height="80" rx="12" fill="#93c5fd"/>
+  <!-- taka sign -->
+  <text x="256" y="410" text-anchor="middle" font-size="72" font-weight="bold" fill="white" font-family="serif">৳</text>
+</svg>`;
+
+const _PWA_ICON_URI  = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(_PWA_ICON_SVG)));
+
+/* ── Generate PNG icon from SVG at given size ── */
+function _genPngIcon(size){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      c.getContext('2d').drawImage(img,0,0,size,size);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = ()=> resolve(_PWA_ICON_URI); // fallback to SVG
+    img.src = _PWA_ICON_URI;
+  });
+}
+
+/* ── Service Worker: network-first for navigation, cache-first for assets ── */
 const SW_CODE = `
-const CACHE='choyed-pos-v3';
+const CACHE='choyed-pos-v4';
+const PRECACHE=[location.pathname||'/'];
 self.addEventListener('install',e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll([location.pathname||'/'])).then(()=>self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c=>c.addAll(PRECACHE))
+      .then(()=>self.skipWaiting())
+  );
 });
 self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+  e.waitUntil(
+    caches.keys()
+      .then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
+      .then(()=>self.clients.claim())
+  );
 });
 self.addEventListener('fetch',e=>{
-  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
-    const clone=res.clone();
-    caches.open(CACHE).then(c=>c.put(e.request,clone));
-    return res;
-  }).catch(()=>caches.match('/'))));
+  const req=e.request;
+  // Navigation: network-first so fresh HTML always loads
+  if(req.mode==='navigate'){
+    e.respondWith(
+      fetch(req).then(res=>{
+        const clone=res.clone();
+        caches.open(CACHE).then(c=>c.put(req,clone));
+        return res;
+      }).catch(()=>caches.match(req).then(r=>r||caches.match('/')))
+    );
+    return;
+  }
+  // Assets: cache-first
+  e.respondWith(
+    caches.match(req).then(r=>{
+      if(r) return r;
+      return fetch(req).then(res=>{
+        if(res && res.status===200 && res.type==='basic'){
+          const clone=res.clone();
+          caches.open(CACHE).then(c=>c.put(req,clone));
+        }
+        return res;
+      }).catch(()=>new Response('',{status:408}));
+    })
+  );
 });
 `;
 
@@ -2853,44 +3072,152 @@ function registerSW(){
   if(!('serviceWorker' in navigator)) return;
   const blob = new Blob([SW_CODE],{type:'application/javascript'});
   const url = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(url,{scope:'/'}).catch(()=>{});
+  navigator.serviceWorker.register(url,{scope:'/'})
+    .then(reg=>{ console.log('SW registered',reg.scope); })
+    .catch(err=>{ console.warn('SW registration failed',err); });
 }
 
-function injectManifest(){
-  const m={
-    name:"ছৈয়দ স্টোর POS",
-    short_name:"ছৈয়দ POS",
-    description:"Professional POS Billing System",
-    start_url:"./",display:"standalone",
-    background_color:"#f0f4ff",theme_color:"#1e40af",
-    icons:[{
-      src:"data:image/svg+xml;base64,"+btoa(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%231e40af'/><text y='360' x='256' text-anchor='middle' font-size='280'>🛒</text></svg>`),
-      sizes:"512x512",type:"image/svg+xml"
-    }]
+/* ── Manifest: inject with proper icons ── */
+async function injectManifest(){
+  // Generate PNG icons from the SVG
+  let icons = [];
+  try{
+    const png192 = await _genPngIcon(192);
+    const png512 = await _genPngIcon(512);
+    icons = [
+      {src: png192, sizes:'192x192', type:'image/png', purpose:'any maskable'},
+      {src: png512, sizes:'512x512', type:'image/png', purpose:'any maskable'},
+      {src: _PWA_ICON_URI, sizes:'512x512', type:'image/svg+xml', purpose:'any maskable'}
+    ];
+  } catch(e){
+    icons = [{src:_PWA_ICON_URI, sizes:'512x512', type:'image/svg+xml'}];
+  }
+
+  const m = {
+    name: "ছৈয়দ স্টোর POS",
+    short_name: "ছৈয়দ POS",
+    description: "Professional POS Billing System — মো: ছৈয়দ স্টোর",
+    start_url: "./",
+    scope: "./",
+    display: "standalone",
+    orientation: "portrait-primary",
+    background_color: "#1e40af",
+    theme_color: "#1e40af",
+    categories: ["business","productivity","finance"],
+    icons
   };
-  const blob=new Blob([JSON.stringify(m)],{type:'application/json'});
-  document.getElementById('pwaManifest').href=URL.createObjectURL(blob);
+  const blob = new Blob([JSON.stringify(m)],{type:'application/json'});
+  const el = document.getElementById('pwaManifest');
+  if(el) el.href = URL.createObjectURL(blob);
+
+  // Inject iOS / Safari specific meta tags for splash + icon
+  _injectIosMeta();
 }
 
-window.addEventListener('beforeinstallprompt',e=>{
-  e.preventDefault(); deferredPrompt=e;
-  if(!localStorage.getItem('pwaInstalled'))
-    setTimeout(()=>document.getElementById('installBanner').classList.add('show'),4000);
-});
+function _injectIosMeta(){
+  const head = document.head;
+  const add = (tag,attrs)=>{
+    const el=document.createElement(tag);
+    Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
+    head.appendChild(el);
+  };
+  // iOS icon
+  add('link',{'rel':'apple-touch-icon','href':_PWA_ICON_URI});
+  // iOS standalone
+  if(!document.querySelector('meta[name="apple-mobile-web-app-capable"]'))
+    add('meta',{'name':'apple-mobile-web-app-capable','content':'yes'});
+  if(!document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]'))
+    add('meta',{'name':'apple-mobile-web-app-status-bar-style','content':'black-translucent'});
+  if(!document.querySelector('meta[name="apple-mobile-web-app-title"]'))
+    add('meta',{'name':'apple-mobile-web-app-title','content':'ছৈয়দ POS'});
+  // MS tile
+  add('meta',{'name':'msapplication-TileColor','content':'#1e40af'});
+  add('meta',{'name':'msapplication-TileImage','content':_PWA_ICON_URI});
+}
 
-function installPWA(){
-  if(!deferredPrompt) return;
+/* ── Detect iOS Safari ── */
+function _isIos(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+}
+function _isInStandaloneMode(){
+  return window.navigator.standalone === true
+    || window.matchMedia('(display-mode: standalone)').matches;
+}
+
+/* ── Show install modal ── */
+function _showPwaModal(){
+  const overlay = document.getElementById('pwaInstallOverlay');
+  if(!overlay) return;
+  if(_isIos()){
+    // iOS: show instructions, hide install button
+    const iosPanel = document.getElementById('iosInstallPanel');
+    const installBtn = document.getElementById('pwaInstallBtn');
+    if(iosPanel) iosPanel.style.display='block';
+    if(installBtn) installBtn.style.display='none';
+  }
+  overlay.classList.add('show');
+}
+
+function triggerPwaInstall(){
+  if(!deferredPrompt){ toast("ব্রাউজার ইন্সটল সাপোর্ট করছে না", 'info'); return; }
   deferredPrompt.prompt();
   deferredPrompt.userChoice.then(r=>{
-    if(r.outcome==='accepted'){ localStorage.setItem('pwaInstalled','1'); toast("অ্যাপ ইন্সটল হয়েছে 🎉"); }
-    document.getElementById('installBanner').classList.remove('show');
+    if(r.outcome==='accepted'){
+      localStorage.setItem('pwaInstalled','1');
+      toast("অ্যাপ ইন্সটল হচ্ছে 🎉");
+    }
+    dismissPwaModal();
     deferredPrompt=null;
   });
 }
-function dismissInstall(){
-  document.getElementById('installBanner').classList.remove('show');
-  localStorage.setItem('pwaInstalled','1');
+
+function dismissPwaModal(){
+  const overlay = document.getElementById('pwaInstallOverlay');
+  if(overlay) overlay.classList.remove('show');
+  // Remember dismissal — don't show again for 3 days
+  localStorage.setItem('pwaDismissedAt', Date.now());
 }
+
+function pwaOverlayClick(e){
+  // Close if user taps the dark backdrop (not the card)
+  if(e.target === document.getElementById('pwaInstallOverlay')) dismissPwaModal();
+}
+
+/* ── beforeinstallprompt: capture + conditionally show modal ── */
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // Don't show if already installed or recently dismissed
+  if(localStorage.getItem('pwaInstalled')) return;
+  const dismissedAt = parseInt(localStorage.getItem('pwaDismissedAt')||'0');
+  const threeDays = 3*24*60*60*1000;
+  if(Date.now() - dismissedAt < threeDays) return;
+
+  setTimeout(()=>_showPwaModal(), 2500);
+});
+
+/* ── appinstalled event ── */
+window.addEventListener('appinstalled',()=>{
+  localStorage.setItem('pwaInstalled','1');
+  toast("ছৈয়দ POS ইন্সটল হয়েছে 🎉");
+  dismissPwaModal();
+  deferredPrompt = null;
+});
+
+/* ── iOS: show install prompt if not in standalone mode ── */
+window.addEventListener('DOMContentLoaded',()=>{
+  if(_isIos() && !_isInStandaloneMode() && !localStorage.getItem('pwaInstalled')){
+    const dismissedAt = parseInt(localStorage.getItem('pwaDismissedAt')||'0');
+    const threeDays = 3*24*60*60*1000;
+    if(Date.now() - dismissedAt < threeDays) return;
+    setTimeout(()=>_showPwaModal(), 2500);
+  }
+});
+
+/* ── Keep old installPWA / dismissInstall as stubs so no other code breaks ── */
+function installPWA(){ triggerPwaInstall(); }
+function dismissInstall(){ dismissPwaModal(); }
 
 /* ═══════════════════════════════════════════
    KEYBOARD
@@ -3295,7 +3622,7 @@ function loadSlHistoryForEdit(id){
    INIT — bulletproof multi-event load
 ═══════════════════════════════════════════ */
 function bootApp(){
-  injectManifest();
+  injectManifest(); // async — generates PNG icons then injects manifest + iOS meta
   registerSW();
   setMode('weight');
   attachBnInputConverters();
