@@ -586,6 +586,558 @@ input::placeholder{color:var(--muted2);}
   background:var(--card);
 }
 .icon-btn:hover{transform:translateY(-1px);}
+.edit-btn{border-color:#fde6/* ── Data sanitizer: Firestore rejects undefined, NaN, Infinity, functions.
+   Also does a JSON round-trip as final guard — guarantees plain serializable data.
+   Raw Unicode (Bangla text) is kept as-is; never encoded/decoded. ── */
+function _sanitize(obj){
+  // First pass: recursive clean
+  function _clean(v){
+    if(v === null || v === undefined) return null;
+    if(typeof v === 'number') return (isNaN(v)||!isFinite(v)) ? 0 : v;
+    if(typeof v === 'string') return v;   // Bangla/Unicode kept raw — no encoding
+    if(typeof v === 'boolean') return v;
+    if(Array.isArray(v)) return v.map(_clean);
+    if(typeof v === 'object'){
+      const out = {};
+      for(const [k, val] of Object.entries(v)){
+        if(typeof val === 'function') continue;
+        if(val === undefined) continue;
+        out[k] = _clean(val);
+      }
+      return out;
+    }
+    return String(v);
+  }
+  // Second pass: JSON round-trip removes any remaining non-serializable values
+  try{
+    return JSON.parse(JSON.stringify(_clean(obj)));
+  }catch(e){
+    console.warn('_sanitize JSON round-trip failed, using empty object', e);
+    return {};
+  }
+}
+
+/* ════════════════════════════════════════════
+   FIREBASE HELPER — expose to global scope
+   so existing functions can call fb.*()
+════════════════════════════════════════════ */
+window.fb = {
+
+  /* ── PRODUCTS ── */
+  async saveProduct(product){
+    if(!product || !product.id) return;
+    await setDoc(doc(db,'products', String(product.id)), _sanitize(product));
+  },
+  async deleteProduct(id){
+    if(!id) return;
+    await deleteDoc(doc(db,'products', String(id)));
+  },
+  listenProducts(callback, onError){
+    return onSnapshot(collection(db,'products'), snap=>{
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      list.sort((a,b)=> (a.id||0) - (b.id||0));
+      callback(list);
+    }, err=>{ console.warn('listenProducts error',err); if(onError) onError(err); });
+  },
+
+  /* ── INVOICE COUNTER: transaction-safe increment ── */
+  async getAndIncrementCounter(){
+    const ref = doc(db,'meta','invoiceCounter');
+    let newVal = 1001;
+    await runTransaction(db, async tx=>{
+      const snap = await tx.get(ref);
+      newVal = snap.exists() ? (snap.data().value||1000) + 1 : 1001;
+      tx.set(ref, {value: newVal});
+    });
+    return newVal;
+  },
+  async saveInvoiceCounter(n){
+    await setDoc(doc(db,'meta','invoiceCounter'),{value: Number(n)||1000});
+  },
+  async getInvoiceCounter(){
+    const d = await getDoc(doc(db,'meta','invoiceCounter'));
+    return d.exists() ? (d.data().value||1000) : 1000;
+  },
+
+  /* ── SAVED INVOICES ── */
+  async saveInvoice(invoice){
+    if(!invoice || !invoice.id) return;
+    await setDoc(doc(db,'savedInvoices', String(invoice.id)), _sanitize(invoice));
+  },
+  async deleteInvoice(id){
+    if(!id) return;
+    await deleteDoc(doc(db,'savedInvoices', String(id)));
+  },
+  listenInvoices(callback, onError){
+    return onSnapshot(collection(db,'savedInvoices'), snap=>{
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      list.sort((a,b)=> (b.id||0) - (a.id||0));
+      callback(list);
+    }, err=>{ console.warn('listenInvoices error',err); if(onError) onError(err); });
+  },
+
+  /* ── SHORT LIST (active) ── */
+  async saveShortList(items){
+    const safe = Array.isArray(items) ? items.map(i=>_sanitize(i)) : [];
+    await setDoc(doc(db,'meta','shortList'),{items: safe});
+  },
+  listenShortList(callback, onError){
+    return onSnapshot(doc(db,'meta','shortList'), snap=>{
+      callback(snap.exists() ? (snap.data().items||[]) : []);
+    }, err=>{ console.warn('listenShortList error',err); if(onError) onError(err); });
+  },
+
+  /* ── SHORT LIST HISTORY ── */
+  async saveSlHistory(entry){
+    if(!entry || !entry.id) return;
+    await setDoc(doc(db,'slHistory', String(entry.id)), _sanitize(entry));
+  },
+  async deleteSlHistory(id){
+    if(!id) return;
+    await deleteDoc(doc(db,'slHistory', String(id)));
+  },
+  listenSlHistory(callback, onError){
+    return onSnapshot(collection(db,'slHistory'), snap=>{
+      const list = [];
+      snap.forEach(d => list.push(d.data()));
+      list.sort((a,b)=> (b.id||0) - (a.id||0));
+      callback(list);
+    }, err=>{ console.warn('listenSlHistory error',err); if(onError) onError(err); });
+  },
+
+  /* ── MIGRATE: push all localStorage data to Firebase once ── */
+  async migrateFromLocalStorage(){
+    const batch = writeBatch(db);
+    let opCount = 0;
+    const MAX_BATCH = 490; // Firestore limit is 500 per batch
+
+    const flushBatch = async ()=>{
+      await batch.commit();
+      opCount = 0;
+    };
+
+    // products
+    const prods = JSON.parse(localStorage.getItem('backup')||'[]');
+    for(const p of prods){
+      if(!p || !p.id) continue;
+      batch.set(doc(db,'products',String(p.id)), _sanitize(p));
+      if(++opCount >= MAX_BATCH) await flushBatch();
+    }
+
+    // savedInvoices
+    const invs = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
+    for(const inv of invs){
+      if(!inv || !inv.id) continue;
+      batch.set(doc(db,'savedInvoices',String(inv.id)), _sanitize(inv));
+      if(++opCount >= MAX_BATCH) await flushBatch();
+    }
+
+    // shortList
+    const sl = JSON.parse(localStorage.getItem('shortList')||'[]');
+    batch.set(doc(db,'meta','shortList'),{items: sl.map(i=>_sanitize(i))});
+    opCount++;
+
+    // slHistory
+    const slH = JSON.parse(localStorage.getItem('slHistory')||'[]');
+    for(const h of slH){
+      if(!h || !h.id) continue;
+      batch.set(doc(db,'slHistory',String(h.id)), _sanitize(h));
+      if(++opCount >= MAX_BATCH) await flushBatch();
+    }
+
+    // invoiceCounter
+    const ic = parseInt(localStorage.getItem('invoiceCounter')||'1000');
+    batch.set(doc(db,'meta','invoiceCounter'),{value: isNaN(ic)?1000:ic});
+    opCount++;
+
+    if(opCount > 0) await batch.commit();
+    localStorage.setItem('fb_migrated','1');
+    console.log('✅ Migration to Firebase complete');
+  }
+};
+
+/* ════════════════════════════════════════════
+   BOOT: start real-time listeners once DOM ready
+   Guard: only runs once even if DOMContentLoaded fires twice
+════════════════════════════════════════════ */
+let _fbBootDone = false;
+document.addEventListener('DOMContentLoaded', async ()=>{
+  if(_fbBootDone) return;
+  _fbBootDone = true;
+
+  // ── Show syncing indicator ──
+  window._fbReady = false;
+  const showSyncBadge = (txt, color='#2563eb') => {
+    let b = document.getElementById('fbSyncBadge');
+    if(!b){
+      b = document.createElement('div');
+      b.id = 'fbSyncBadge';
+      b.style.cssText = `position:fixed;top:66px;right:10px;z-index:4000;
+        padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
+        color:#fff;font-family:'Hind Siliguri',sans-serif;
+        box-shadow:0 2px 8px rgba(0,0,0,.2);transition:background .3s;`;
+      document.body.appendChild(b);
+    }
+    b.style.background = color;
+    b.textContent = txt;
+  };
+  window._showSyncBadge = showSyncBadge; // expose for reconnect use
+  showSyncBadge('🔄 সংযুক্ত হচ্ছে...');
+
+  // ── Migrate old localStorage data to Firebase (runs only once) ──
+  if(!localStorage.getItem('fb_migrated')){
+    try{
+      await window.fb.migrateFromLocalStorage();
+      showSyncBadge('✅ ডেটা মাইগ্রেট হয়েছে','#16a34a');
+      setTimeout(()=>showSyncBadge('🟢 সংযুক্ত','#16a34a'), 2000);
+    } catch(e){
+      showSyncBadge('⚠️ মাইগ্রেশন ব্যর্থ','#d97706');
+      console.error('Migration error:',e);
+    }
+  } else {
+    showSyncBadge('🟢 সংযুক্ত','#16a34a');
+  }
+
+  // ── invoiceCounter: load once from Firebase ──
+  try{
+    const ic = await window.fb.getInvoiceCounter();
+    invoiceCounter = ic;
+    window.invoiceCounter = ic;
+  } catch(e){ console.warn('invoiceCounter load failed',e); }
+
+  // ── Helper: on listener error show offline badge ──
+  const _onListenerError = (name, err)=>{
+    console.warn(name + ' listener error (non-fatal):', err && err.message || err);
+    showSyncBadge('🔴 সংযোগ বিচ্ছিন্ন — রিফ্রেশ করুন','#dc2626');
+  };
+
+  // ── PRODUCTS: real-time listener — Firebase is source of truth ──
+  window.fb.listenProducts(list=>{
+    products = list;
+    window.products = list;
+    try{ localStorage.setItem('backup', JSON.stringify(list)); }catch(e){}
+    if(typeof renderData === 'function') renderData();
+    if(typeof updateStats === 'function') updateStats();
+    if(!window._fbReady){
+      window._fbReady = true;
+      showSyncBadge('🟢 সংযুক্ত','#16a34a');
+    }
+  }, err=>_onListenerError('products', err));
+
+  // ── SAVED INVOICES: real-time listener ──
+  window.fb.listenInvoices(list=>{
+    window._fbInvoices = list;
+    try{ localStorage.setItem('savedInvoices', JSON.stringify(list)); }catch(e){}
+    if(typeof renderSavedInvoices === 'function' &&
+       document.getElementById('savedInvoicesModal').classList.contains('open'))
+      renderSavedInvoices();
+    if(typeof renderBillBoxInvoices === 'function' &&
+       window.currentBillTab === 'saved')
+      renderBillBoxInvoices();
+  }, err=>_onListenerError('invoices', err));
+
+  // ── SHORT LIST: real-time listener ──
+  window.fb.listenShortList(items=>{
+    window.shortList = items;
+    shortList = items;
+    try{ localStorage.setItem('shortList', JSON.stringify(items)); }catch(e){}
+    if(typeof renderShortList === 'function') renderShortList();
+    if(typeof updateSlBadge === 'function') updateSlBadge();
+  }, err=>_onListenerError('shortList', err));
+
+  // ── SL HISTORY: real-time listener ──
+  window.fb.listenSlHistory(list=>{
+    window._fbSlHistory = list;
+    try{ localStorage.setItem('slHistory', JSON.stringify(list)); }catch(e){}
+    if(typeof renderSlHistory === 'function') renderSlHistory();
+  }, err=>_onListenerError('slHistory', err));
+
+});
+</script>
+<style>
+/* ═══════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════ */
+:root{
+  --bg:#f0f4ff;
+  --card:#ffffff;
+  --border:#dde3f0;
+  --border2:#c7d0e8;
+  --text:#0f172a;
+  --muted:#64748b;
+  --muted2:#94a3b8;
+  --primary:#2563eb;
+  --primary-light:#eff6ff;
+  --primary-dark:#1d4ed8;
+  --success:#16a34a;
+  --success-light:#f0fdf4;
+  --danger:#dc2626;
+  --danger-light:#fef2f2;
+  --warning:#d97706;
+  --warning-light:#fffbeb;
+  --shadow-sm:0 1px 3px rgba(15,23,42,0.08),0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md:0 4px 16px rgba(15,23,42,0.10),0 2px 6px rgba(15,23,42,0.06);
+  --shadow-lg:0 12px 40px rgba(15,23,42,0.16),0 4px 12px rgba(15,23,42,0.08);
+  --shadow-bill:0 20px 60px rgba(15,23,42,0.22),0 8px 20px rgba(15,23,42,0.10);
+  --radius:12px;
+  --radius-lg:18px;
+  --font:'Hind Siliguri',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding-bottom:120px;
+}
+
+/* ═══════════════════════════════════════════
+   TOP BAR
+═══════════════════════════════════════════ */
+.topbar{
+  background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);
+  padding:0 16px;
+  height:60px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 12px rgba(30,64,175,0.3);
+}
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.topbar-logo{
+  width:38px;height:38px;border-radius:10px;
+  background:rgba(255,255,255,0.2);
+  border:1px solid rgba(255,255,255,0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;
+}
+.topbar-name{color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.3px;}
+.topbar-sub{color:rgba(255,255,255,0.7);font-size:11px;margin-top:-2px;}
+.topbar-actions{display:flex;gap:8px;align-items:center;}
+.topbar-btn{
+  background:rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.25);
+  color:#fff;
+  padding:7px 12px;border-radius:9px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  font-family:var(--font);
+  display:flex;align-items:center;gap:5px;
+  transition:background .2s;
+  white-space:nowrap;
+}
+.topbar-btn:hover{background:rgba(255,255,255,0.25);}
+
+/* ── Topbar search ── */
+.topbar-search-wrap{
+  position:relative;
+  flex:1;
+  max-width:260px;
+  min-width:0;
+}
+.topbar-search-wrap input{
+  width:100%;
+  padding:8px 14px 8px 36px;
+  background:rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.28);
+  border-radius:9px;
+  color:#fff;
+  font-size:13px;
+  font-family:var(--font);
+  outline:none;
+  transition:background .2s,border-color .2s;
+  box-shadow:none;
+}
+.topbar-search-wrap input::placeholder{color:rgba(255,255,255,0.6);}
+.topbar-search-wrap input:focus{
+  background:rgba(255,255,255,0.22);
+  border-color:rgba(255,255,255,0.55);
+  box-shadow:none;
+}
+.topbar-search-icon{
+  position:absolute;left:11px;top:50%;
+  transform:translateY(-50%);
+  font-size:14px;pointer-events:none;
+  color:rgba(255,255,255,0.7);
+}
+@media(max-width:520px){
+  .topbar-search-wrap{max-width:140px;}
+}
+
+/* Fix 3 — Topbar instant search dropdown */
+#topSearchDrop{
+  display:none;
+  position:fixed;
+  top:60px;
+  left:0;right:0;
+  z-index:200;
+  background:#fff;
+  border-bottom:2px solid var(--primary);
+  box-shadow:0 8px 24px rgba(15,23,42,.15);
+  max-height:60vh;
+  overflow-y:auto;
+}
+#topSearchDrop.open{display:block;}
+.tsd-header{
+  padding:8px 16px;
+  background:var(--primary);
+  color:#fff;
+  font-size:12px;font-weight:700;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.tsd-item{
+  display:grid;
+  grid-template-columns:1fr 90px 90px;
+  gap:8px;align-items:center;
+  padding:11px 16px;
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  transition:background .12s;
+}
+.tsd-item:hover{background:#f0f4ff;}
+.tsd-item:last-child{border-bottom:none;}
+.tsd-name{font-size:14px;font-weight:700;color:var(--text);}
+.tsd-unit{font-size:12px;color:var(--muted);text-align:center;}
+.tsd-price{font-size:14px;font-weight:700;color:var(--success);text-align:right;}
+
+/* ═══════════════════════════════════════════
+   MAIN CONTAINER — POS (PRIMARY / ALWAYS VISIBLE)
+═══════════════════════════════════════════ */
+.container{
+  max-width:740px;
+  margin:20px auto;
+  padding:0 14px;
+}
+
+/* ═══════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════ */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+  margin-bottom:16px;
+  overflow:hidden;
+}
+.card-header{
+  padding:14px 18px 12px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;
+}
+.card-header-title{
+  font-size:14px;font-weight:700;color:var(--text);
+  display:flex;align-items:center;gap:7px;
+}
+.card-header-title .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--primary);display:inline-block;
+}
+.card-body{padding:16px 18px;}
+.card-count{margin-left:auto;font-size:12px;font-weight:600;
+  background:var(--primary-light);color:var(--primary);
+  padding:3px 10px;border-radius:20px;border:1px solid #bfdbfe;}
+
+/* ═══════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════ */
+.field-label{
+  display:block;font-size:12px;font-weight:600;
+  color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;
+}
+input,select{
+  width:100%;padding:11px 14px;
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  font-size:14px;font-family:var(--font);
+  background:#fff;color:var(--text);
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  -webkit-appearance:none;
+}
+input:focus,select:focus{
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px rgba(37,99,235,0.12);
+}
+input::placeholder{color:var(--muted2);}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-field{margin-bottom:10px;}
+
+/* ═══════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:7px;padding:11px 18px;border:none;border-radius:var(--radius);
+  font-size:14px;font-weight:600;font-family:var(--font);
+  cursor:pointer;transition:all .2s;width:100%;
+}
+.btn-primary{background:var(--primary);color:#fff;}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-success{background:var(--success);color:#fff;}
+.btn-success:hover{filter:brightness(1.08);}
+.btn-danger{background:transparent;border:1.5px solid var(--border2);color:var(--danger);}
+.btn-danger:hover{background:var(--danger-light);border-color:var(--danger);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
+.btn-sm{padding:7px 12px;font-size:12px;width:auto;}
+.btn-warn{background:var(--warning);color:#fff;}
+.btn-warn:hover{filter:brightness(1.08);}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* ═══════════════════════════════════════════
+   SEARCH BAR
+═══════════════════════════════════════════ */
+.search-wrap{position:relative;}
+.search-wrap input{padding-left:42px;}
+.search-icon{
+  position:absolute;left:14px;top:50%;
+  transform:translateY(-50%);
+  font-size:16px;pointer-events:none;
+  color:var(--muted2);
+}
+
+/* ═══════════════════════════════════════════
+   PRODUCT LIST — EXACT ORIGINAL GRID
+═══════════════════════════════════════════ */
+.prod-header{
+  display:grid;
+  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
+  gap:8px;padding:10px 14px;
+  background:#0f172a;color:#fff;
+  border-radius:var(--radius);
+  font-size:12px;font-weight:600;
+  margin-top:12px;align-items:center;
+  letter-spacing:.3px;
+}
+.prod-row{
+  display:grid;
+  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
+  gap:8px;align-items:center;
+  padding:12px 14px;
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  margin-top:7px;
+  background:var(--card);
+  transition:border-color .2s,box-shadow .2s;
+}
+.prod-row:hover{border-color:var(--border2);box-shadow:var(--shadow-sm);}
+.col-name{font-size:14px;font-weight:700;line-height:1.4;word-break:break-word;}
+.col-unit{text-align:center;font-size:12px;color:var(--muted);line-height:1.4;}
+.col-unit .u1{font-weight:600;color:var(--text);}
+.col-price{font-size:15px;font-weight:700;color:var(--success);text-align:center;}
+.col-action{display:flex;justify-content:flex-end;gap:6px;}
+.icon-btn{
+  width:30px;height:30px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:9px;font-size:14px;cursor:pointer;
+  transition:all .2s;border:1.5px solid var(--border);
+  background:var(--card);
+}
+.icon-btn:hover{transform:translateY(-1px);}
 .edit-btn{border-color:#fde68a;color:var(--warning);}
 .edit-btn:hover{background:var(--warning-light);}
 .delete-btn{border-color:#fecaca;color:var(--danger);}
