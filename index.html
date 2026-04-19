@@ -586,1394 +586,6 @@ input::placeholder{color:var(--muted2);}
   background:var(--card);
 }
 .icon-btn:hover{transform:translateY(-1px);}
-.edit-btn{border-color:#fde6window.fb.listenInvoices(list=>{
-    window._fbInvoices = list;
-    try{ localStorage.setItem('savedInvoices', JSON.stringify(list)); }catch(e){}
-    if(typeof renderSavedInvoices === 'function' &&
-       document.getElementById('savedInvoicesModal').classList.contains('open'))
-      renderSavedInvoices();
-    if(typeof renderBillBoxInvoices === 'function' &&
-       window.currentBillTab === 'saved')
-      renderBillBoxInvoices();
-  }, err=>_onListenerError('invoices', err));
-
-  // ── SHORT LIST: real-time listener ──
-  window.fb.listenShortList(items=>{
-    window.shortList = items;
-    shortList = items;
-    try{ localStorage.setItem('shortList', JSON.stringify(items)); }catch(e){}
-    if(typeof renderShortList === 'function') renderShortList();
-    if(typeof updateSlBadge === 'function') updateSlBadge();
-  }, err=>_onListenerError('shortList', err));
-
-  // ── SL HISTORY: real-time listener ──
-  window.fb.listenSlHistory(list=>{
-    window._fbSlHistory = list;
-    try{ localStorage.setItem('slHistory', JSON.stringify(list)); }catch(e){}
-    if(typeof renderSlHistory === 'function') renderSlHistory();
-  }, err=>_onListenerError('slHistory', err));
-
-});
-</script>
-<style>
-/* ═══════════════════════════════════════════
-   DESIGN TOKENS
-═══════════════════════════════════════════ */
-:root{
-  --bg:#f0f4ff;
-  --card:#ffffff;
-  --border:#dde3f0;
-  --border2:#c7d0e8;
-  --text:#0f172a;
-  --muted:#64748b;
-  --muted2:#94a3b8;
-  --primary:#2563eb;
-  --primary-light:#eff6ff;
-  --primary-dark:#1d4ed8;
-  --success:#16a34a;
-  --success-light:#f0fdf4;
-  --danger:#dc2626;
-  --danger-light:#fef2f2;
-  --warning:#d97706;
-  --warning-light:#fffbeb;
-  --shadow-sm:0 1px 3px rgba(15,23,42,0.08),0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md:0 4px 16px rgba(15,23,42,0.10),0 2px 6px rgba(15,23,42,0.06);
-  --shadow-lg:0 12px 40px rgba(15,23,42,0.16),0 4px 12px rgba(15,23,42,0.08);
-  --shadow-bill:0 20px 60px rgba(15,23,42,0.22),0 8px 20px rgba(15,23,42,0.10);
-  --radius:12px;
-  --radius-lg:18px;
-  --font:'Hind Siliguri',system-ui,sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{
-  font-family:var(--font);
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  padding-bottom:120px;
-}
-
-/* ═══════════════════════════════════════════
-   TOP BAR
-═══════════════════════════════════════════ */
-.topbar{
-  background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);
-  padding:0 16px;
-  height:60px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  position:sticky;top:0;z-index:50;
-  box-shadow:0 2px 12px rgba(30,64,175,0.3);
-}
-.topbar-brand{display:flex;align-items:center;gap:10px;}
-.topbar-logo{
-  width:38px;height:38px;border-radius:10px;
-  background:rgba(255,255,255,0.2);
-  border:1px solid rgba(255,255,255,0.3);
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;
-}
-.topbar-name{color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.3px;}
-.topbar-sub{color:rgba(255,255,255,0.7);font-size:11px;margin-top:-2px;}
-.topbar-actions{display:flex;gap:8px;align-items:center;}
-.topbar-btn{
-  background:rgba(255,255,255,0.15);
-  border:1px solid rgba(255,255,255,0.25);
-  color:#fff;
-  padding:7px 12px;border-radius:9px;
-  font-size:12px;font-weight:600;cursor:pointer;
-  font-family:var(--font);
-  display:flex;align-items:center;gap:5px;
-  transition:background .2s;
-  white-space:nowrap;
-}
-.topbar-btn:hover{background:rgba(255,255,255,0.25);}
-
-/* ── Topbar search ── */
-.topbar-search-wrap{
-  position:relative;
-  flex:1;
-  max-width:260px;
-  min-width:0;
-}
-.topbar-search-wrap input{
-  width:100%;
-  padding:8px 14px 8px 36px;
-  background:rgba(255,255,255,0.15);
-  border:1px solid rgba(255,255,255,0.28);
-  border-radius:9px;
-  color:#fff;
-  font-size:13px;
-  font-family:var(--font);
-  outline:none;
-  transition:background .2s,border-color .2s;
-  box-shadow:none;
-}
-.topbar-search-wrap input::placeholder{color:rgba(255,255,255,0.6);}
-.topbar-search-wrap input:focus{
-  background:rgba(255,255,255,0.22);
-  border-color:rgba(255,255,255,0.55);
-  box-shadow:none;
-}
-.topbar-search-icon{
-  position:absolute;left:11px;top:50%;
-  transform:translateY(-50%);
-  font-size:14px;pointer-events:none;
-  color:rgba(255,255,255,0.7);
-}
-@media(max-width:520px){
-  .topbar-search-wrap{max-width:140px;}
-}
-
-/* Fix 3 — Topbar instant search dropdown */
-#topSearchDrop{
-  display:none;
-  position:fixed;
-  top:60px;
-  left:0;right:0;
-  z-index:200;
-  background:#fff;
-  border-bottom:2px solid var(--primary);
-  box-shadow:0 8px 24px rgba(15,23,42,.15);
-  max-height:60vh;
-  overflow-y:auto;
-}
-#topSearchDrop.open{display:block;}
-.tsd-header{
-  padding:8px 16px;
-  background:var(--primary);
-  color:#fff;
-  font-size:12px;font-weight:700;
-  display:flex;justify-content:space-between;align-items:center;
-}
-.tsd-item{
-  display:grid;
-  grid-template-columns:1fr 90px 90px;
-  gap:8px;align-items:center;
-  padding:11px 16px;
-  border-bottom:1px solid var(--border);
-  cursor:pointer;
-  transition:background .12s;
-}
-.tsd-item:hover{background:#f0f4ff;}
-.tsd-item:last-child{border-bottom:none;}
-.tsd-name{font-size:14px;font-weight:700;color:var(--text);}
-.tsd-unit{font-size:12px;color:var(--muted);text-align:center;}
-.tsd-price{font-size:14px;font-weight:700;color:var(--success);text-align:right;}
-
-/* ═══════════════════════════════════════════
-   MAIN CONTAINER — POS (PRIMARY / ALWAYS VISIBLE)
-═══════════════════════════════════════════ */
-.container{
-  max-width:740px;
-  margin:20px auto;
-  padding:0 14px;
-}
-
-/* ═══════════════════════════════════════════
-   CARDS
-═══════════════════════════════════════════ */
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-sm);
-  margin-bottom:16px;
-  overflow:hidden;
-}
-.card-header{
-  padding:14px 18px 12px;
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;gap:8px;
-}
-.card-header-title{
-  font-size:14px;font-weight:700;color:var(--text);
-  display:flex;align-items:center;gap:7px;
-}
-.card-header-title .dot{
-  width:8px;height:8px;border-radius:50%;
-  background:var(--primary);display:inline-block;
-}
-.card-body{padding:16px 18px;}
-.card-count{margin-left:auto;font-size:12px;font-weight:600;
-  background:var(--primary-light);color:var(--primary);
-  padding:3px 10px;border-radius:20px;border:1px solid #bfdbfe;}
-
-/* ═══════════════════════════════════════════
-   FORM ELEMENTS
-═══════════════════════════════════════════ */
-.field-label{
-  display:block;font-size:12px;font-weight:600;
-  color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;
-}
-input,select{
-  width:100%;padding:11px 14px;
-  border:1.5px solid var(--border);
-  border-radius:var(--radius);
-  font-size:14px;font-family:var(--font);
-  background:#fff;color:var(--text);
-  outline:none;transition:border-color .2s,box-shadow .2s;
-  -webkit-appearance:none;
-}
-input:focus,select:focus{
-  border-color:var(--primary);
-  box-shadow:0 0 0 3px rgba(37,99,235,0.12);
-}
-input::placeholder{color:var(--muted2);}
-
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.form-field{margin-bottom:10px;}
-
-/* ═══════════════════════════════════════════
-   BUTTONS
-═══════════════════════════════════════════ */
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  gap:7px;padding:11px 18px;border:none;border-radius:var(--radius);
-  font-size:14px;font-weight:600;font-family:var(--font);
-  cursor:pointer;transition:all .2s;width:100%;
-}
-.btn-primary{background:var(--primary);color:#fff;}
-.btn-primary:hover{background:var(--primary-dark);}
-.btn-success{background:var(--success);color:#fff;}
-.btn-success:hover{filter:brightness(1.08);}
-.btn-danger{background:transparent;border:1.5px solid var(--border2);color:var(--danger);}
-.btn-danger:hover{background:var(--danger-light);border-color:var(--danger);}
-.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
-.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
-.btn-sm{padding:7px 12px;font-size:12px;width:auto;}
-.btn-warn{background:var(--warning);color:#fff;}
-.btn-warn:hover{filter:brightness(1.08);}
-.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-
-/* ═══════════════════════════════════════════
-   SEARCH BAR
-═══════════════════════════════════════════ */
-.search-wrap{position:relative;}
-.search-wrap input{padding-left:42px;}
-.search-icon{
-  position:absolute;left:14px;top:50%;
-  transform:translateY(-50%);
-  font-size:16px;pointer-events:none;
-  color:var(--muted2);
-}
-
-/* ═══════════════════════════════════════════
-   PRODUCT LIST — EXACT ORIGINAL GRID
-═══════════════════════════════════════════ */
-.prod-header{
-  display:grid;
-  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
-  gap:8px;padding:10px 14px;
-  background:#0f172a;color:#fff;
-  border-radius:var(--radius);
-  font-size:12px;font-weight:600;
-  margin-top:12px;align-items:center;
-  letter-spacing:.3px;
-}
-.prod-row{
-  display:grid;
-  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
-  gap:8px;align-items:center;
-  padding:12px 14px;
-  border:1.5px solid var(--border);
-  border-radius:var(--radius);
-  margin-top:7px;
-  background:var(--card);
-  transition:border-color .2s,box-shadow .2s;
-}
-.prod-row:hover{border-color:var(--border2);box-shadow:var(--shadow-sm);}
-.col-name{font-size:14px;font-weight:700;line-height:1.4;word-break:break-word;}
-.col-unit{text-align:center;font-size:12px;color:var(--muted);line-height:1.4;}
-.col-unit .u1{font-weight:600;color:var(--text);}
-.col-price{font-size:15px;font-weight:700;color:var(--success);text-align:center;}
-.col-action{display:flex;justify-content:flex-end;gap:6px;}
-.icon-btn{
-  width:30px;height:30px;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:9px;font-size:14px;cursor:pointer;
-  transition:all .2s;border:1.5px solid var(--border);
-  background:var(--card);
-}
-.icon-btn:hover{transform:translateY(-1px);}
-.edit-btn{border-color:#fde6    return {};
-  }
-}
-
-/* ════════════════════════════════════════════
-   FIREBASE HELPER — expose to global scope
-   so existing functions can call fb.*()
-════════════════════════════════════════════ */
-window.fb = {
-
-  /* ── PRODUCTS ── */
-  async saveProduct(product){
-    if(!product || !product.id) return;
-    await setDoc(doc(db,'products', String(product.id)), _sanitize(product));
-  },
-  async deleteProduct(id){
-    if(!id) return;
-    await deleteDoc(doc(db,'products', String(id)));
-  },
-  listenProducts(callback, onError){
-    return onSnapshot(collection(db,'products'), snap=>{
-      const list = [];
-      snap.forEach(d => list.push(d.data()));
-      list.sort((a,b)=> (a.id||0) - (b.id||0));
-      callback(list);
-    }, err=>{ console.warn('listenProducts error',err); if(onError) onError(err); });
-  },
-
-  /* ── INVOICE COUNTER: transaction-safe increment ── */
-  async getAndIncrementCounter(){
-    const ref = doc(db,'meta','invoiceCounter');
-    let newVal = 1001;
-    await runTransaction(db, async tx=>{
-      const snap = await tx.get(ref);
-      newVal = snap.exists() ? (snap.data().value||1000) + 1 : 1001;
-      tx.set(ref, {value: newVal});
-    });
-    return newVal;
-  },
-  async saveInvoiceCounter(n){
-    await setDoc(doc(db,'meta','invoiceCounter'),{value: Number(n)||1000});
-  },
-  async getInvoiceCounter(){
-    const d = await getDoc(doc(db,'meta','invoiceCounter'));
-    return d.exists() ? (d.data().value||1000) : 1000;
-  },
-
-  /* ── SAVED INVOICES ── */
-  async saveInvoice(invoice){
-    if(!invoice || !invoice.id) return;
-    await setDoc(doc(db,'savedInvoices', String(invoice.id)), _sanitize(invoice));
-  },
-  async deleteInvoice(id){
-    if(!id) return;
-    await deleteDoc(doc(db,'savedInvoices', String(id)));
-  },
-  listenInvoices(callback, onError){
-    return onSnapshot(collection(db,'savedInvoices'), snap=>{
-      const list = [];
-      snap.forEach(d => list.push(d.data()));
-      list.sort((a,b)=> (b.id||0) - (a.id||0));
-      callback(list);
-    }, err=>{ console.warn('listenInvoices error',err); if(onError) onError(err); });
-  },
-
-  /* ── SHORT LIST (active) ── */
-  async saveShortList(items){
-    const safe = Array.isArray(items) ? items.map(i=>_sanitize(i)) : [];
-    await setDoc(doc(db,'meta','shortList'),{items: safe});
-  },
-  listenShortList(callback, onError){
-    return onSnapshot(doc(db,'meta','shortList'), snap=>{
-      callback(snap.exists() ? (snap.data().items||[]) : []);
-    }, err=>{ console.warn('listenShortList error',err); if(onError) onError(err); });
-  },
-
-  /* ── SHORT LIST HISTORY ── */
-  async saveSlHistory(entry){
-    if(!entry || !entry.id) return;
-    await setDoc(doc(db,'slHistory', String(entry.id)), _sanitize(entry));
-  },
-  async deleteSlHistory(id){
-    if(!id) return;
-    await deleteDoc(doc(db,'slHistory', String(id)));
-  },
-  listenSlHistory(callback, onError){
-    return onSnapshot(collection(db,'slHistory'), snap=>{
-      const list = [];
-      snap.forEach(d => list.push(d.data()));
-      list.sort((a,b)=> (b.id||0) - (a.id||0));
-      callback(list);
-    }, err=>{ console.warn('listenSlHistory error',err); if(onError) onError(err); });
-  },
-
-  /* ── MIGRATE: push all localStorage data to Firebase once ── */
-  async migrateFromLocalStorage(){
-    const batch = writeBatch(db);
-    let opCount = 0;
-    const MAX_BATCH = 490; // Firestore limit is 500 per batch
-
-    const flushBatch = async ()=>{
-      await batch.commit();
-      opCount = 0;
-    };
-
-    // products
-    const prods = JSON.parse(localStorage.getItem('backup')||'[]');
-    for(const p of prods){
-      if(!p || !p.id) continue;
-      batch.set(doc(db,'products',String(p.id)), _sanitize(p));
-      if(++opCount >= MAX_BATCH) await flushBatch();
-    }
-
-    // savedInvoices
-    const invs = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
-    for(const inv of invs){
-      if(!inv || !inv.id) continue;
-      batch.set(doc(db,'savedInvoices',String(inv.id)), _sanitize(inv));
-      if(++opCount >= MAX_BATCH) await flushBatch();
-    }
-
-    // shortList
-    const sl = JSON.parse(localStorage.getItem('shortList')||'[]');
-    batch.set(doc(db,'meta','shortList'),{items: sl.map(i=>_sanitize(i))});
-    opCount++;
-
-    // slHistory
-    const slH = JSON.parse(localStorage.getItem('slHistory')||'[]');
-    for(const h of slH){
-      if(!h || !h.id) continue;
-      batch.set(doc(db,'slHistory',String(h.id)), _sanitize(h));
-      if(++opCount >= MAX_BATCH) await flushBatch();
-    }
-
-    // invoiceCounter
-    const ic = parseInt(localStorage.getItem('invoiceCounter')||'1000');
-    batch.set(doc(db,'meta','invoiceCounter'),{value: isNaN(ic)?1000:ic});
-    opCount++;
-
-    if(opCount > 0) await batch.commit();
-    localStorage.setItem('fb_migrated','1');
-    console.log('✅ Migration to Firebase complete');
-  }
-};
-
-/* ════════════════════════════════════════════
-   BOOT: start real-time listeners once DOM ready
-   Guard: only runs once even if DOMContentLoaded fires twice
-════════════════════════════════════════════ */
-let _fbBootDone = false;
-document.addEventListener('DOMContentLoaded', async ()=>{
-  if(_fbBootDone) return;
-  _fbBootDone = true;
-
-  // ── Show syncing indicator ──
-  window._fbReady = false;
-  const showSyncBadge = (txt, color='#2563eb') => {
-    let b = document.getElementById('fbSyncBadge');
-    if(!b){
-      b = document.createElement('div');
-      b.id = 'fbSyncBadge';
-      b.style.cssText = `position:fixed;top:66px;right:10px;z-index:4000;
-        padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
-        color:#fff;font-family:'Hind Siliguri',sans-serif;
-        box-shadow:0 2px 8px rgba(0,0,0,.2);transition:background .3s;`;
-      document.body.appendChild(b);
-    }
-    b.style.background = color;
-    b.textContent = txt;
-  };
-  window._showSyncBadge = showSyncBadge; // expose for reconnect use
-  showSyncBadge('🔄 সংযুক্ত হচ্ছে...');
-
-  // ── Migrate old localStorage data to Firebase (runs only once) ──
-  if(!localStorage.getItem('fb_migrated')){
-    try{
-      await window.fb.migrateFromLocalStorage();
-      showSyncBadge('✅ ডেটা মাইগ্রেট হয়েছে','#16a34a');
-      setTimeout(()=>showSyncBadge('🟢 সংযুক্ত','#16a34a'), 2000);
-    } catch(e){
-      showSyncBadge('⚠️ মাইগ্রেশন ব্যর্থ','#d97706');
-      console.error('Migration error:',e);
-    }
-  } else {
-    showSyncBadge('🟢 সংযুক্ত','#16a34a');
-  }
-
-  // ── invoiceCounter: load once from Firebase ──
-  try{
-    const ic = await window.fb.getInvoiceCounter();
-    invoiceCounter = ic;
-    window.invoiceCounter = ic;
-  } catch(e){ console.warn('invoiceCounter load failed',e); }
-
-  // ── Helper: on listener error show offline badge ──
-  const _onListenerError = (name, err)=>{
-    console.warn(name + ' listener error (non-fatal):', err && err.message || err);
-    showSyncBadge('🔴 সংযোগ বিচ্ছিন্ন — রিফ্রেশ করুন','#dc2626');
-  };
-
-  // ── PRODUCTS: real-time listener — Firebase is source of truth ──
-  window.fb.listenProducts(list=>{
-    products = list;
-    window.products = list;
-    try{ localStorage.setItem('backup', JSON.stringify(list)); }catch(e){}
-    if(typeof renderData === 'function') renderData();
-    if(typeof updateStats === 'function') updateStats();
-    if(!window._fbReady){
-      window._fbReady = true;
-      showSyncBadge('🟢 সংযুক্ত','#16a34a');
-    }
-  }, err=>_onListenerError('products', err));
-
-  // ── SAVED INVOICES: real-time listener ──
-  window.fb.listenInvoices(list=>{
-    window._fbInvoices = list;
-    try{ localStorage.setItem('savedInvoices', JSON.stringify(list)); }catch(e){}
-    if(typeof renderSavedInvoices === 'function' &&
-       document.getElementById('savedInvoicesModal').classList.contains('open'))
-      renderSavedInvoices();
-    if(typeof renderBillBoxInvoices === 'function' &&
-       window.currentBillTab === 'saved')
-      renderBillBoxInvoices();
-  }, err=>_onListenerError('invoices', err));
-
-  // ── SHORT LIST: real-time listener ──
-  window.fb.listenShortList(items=>{
-    window.shortList = items;
-    shortList = items;
-    try{ localStorage.setItem('shortList', JSON.stringify(items)); }catch(e){}
-    if(typeof renderShortList === 'function') renderShortList();
-    if(typeof updateSlBadge === 'function') updateSlBadge();
-  }, err=>_onListenerError('shortList', err));
-
-  // ── SL HISTORY: real-time listener ──
-  window.fb.listenSlHistory(list=>{
-    window._fbSlHistory = list;
-    try{ localStorage.setItem('slHistory', JSON.stringify(list)); }catch(e){}
-    if(typeof renderSlHistory === 'function') renderSlHistory();
-  }, err=>_onListenerError('slHistory', err));
-
-});
-</script>
-<style>
-/* ═══════════════════════════════════════════
-   DESIGN TOKENS
-═══════════════════════════════════════════ */
-:root{
-  --bg:#f0f4ff;
-  --card:#ffffff;
-  --border:#dde3f0;
-  --border2:#c7d0e8;
-  --text:#0f172a;
-  --muted:#64748b;
-  --muted2:#94a3b8;
-  --primary:#2563eb;
-  --primary-light:#eff6ff;
-  --primary-dark:#1d4ed8;
-  --success:#16a34a;
-  --success-light:#f0fdf4;
-  --danger:#dc2626;
-  --danger-light:#fef2f2;
-  --warning:#d97706;
-  --warning-light:#fffbeb;
-  --shadow-sm:0 1px 3px rgba(15,23,42,0.08),0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md:0 4px 16px rgba(15,23,42,0.10),0 2px 6px rgba(15,23,42,0.06);
-  --shadow-lg:0 12px 40px rgba(15,23,42,0.16),0 4px 12px rgba(15,23,42,0.08);
-  --shadow-bill:0 20px 60px rgba(15,23,42,0.22),0 8px 20px rgba(15,23,42,0.10);
-  --radius:12px;
-  --radius-lg:18px;
-  --font:'Hind Siliguri',system-ui,sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{
-  font-family:var(--font);
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  padding-bottom:120px;
-}
-
-/* ═══════════════════════════════════════════
-   TOP BAR
-═══════════════════════════════════════════ */
-.topbar{
-  background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);
-  padding:0 16px;
-  height:60px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  position:sticky;top:0;z-index:50;
-  box-shadow:0 2px 12px rgba(30,64,175,0.3);
-}
-.topbar-brand{display:flex;align-items:center;gap:10px;}
-.topbar-logo{
-  width:38px;height:38px;border-radius:10px;
-  background:rgba(255,255,255,0.2);
-  border:1px solid rgba(255,255,255,0.3);
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;
-}
-.topbar-name{color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.3px;}
-.topbar-sub{color:rgba(255,255,255,0.7);font-size:11px;margin-top:-2px;}
-.topbar-actions{display:flex;gap:8px;align-items:center;}
-.topbar-btn{
-  background:rgba(255,255,255,0.15);
-  border:1px solid rgba(255,255,255,0.25);
-  color:#fff;
-  padding:7px 12px;border-radius:9px;
-  font-size:12px;font-weight:600;cursor:pointer;
-  font-family:var(--font);
-  display:flex;align-items:center;gap:5px;
-  transition:background .2s;
-  white-space:nowrap;
-}
-.topbar-btn:hover{background:rgba(255,255,255,0.25);}
-
-/* ── Topbar search ── */
-.topbar-search-wrap{
-  position:relative;
-  flex:1;
-  max-width:260px;
-  min-width:0;
-}
-.topbar-search-wrap input{
-  width:100%;
-  padding:8px 14px 8px 36px;
-  background:rgba(255,255,255,0.15);
-  border:1px solid rgba(255,255,255,0.28);
-  border-radius:9px;
-  color:#fff;
-  font-size:13px;
-  font-family:var(--font);
-  outline:none;
-  transition:background .2s,border-color .2s;
-  box-shadow:none;
-}
-.topbar-search-wrap input::placeholder{color:rgba(255,255,255,0.6);}
-.topbar-search-wrap input:focus{
-  background:rgba(255,255,255,0.22);
-  border-color:rgba(255,255,255,0.55);
-  box-shadow:none;
-}
-.topbar-search-icon{
-  position:absolute;left:11px;top:50%;
-  transform:translateY(-50%);
-  font-size:14px;pointer-events:none;
-  color:rgba(255,255,255,0.7);
-}
-@media(max-width:520px){
-  .topbar-search-wrap{max-width:140px;}
-}
-
-/* Fix 3 — Topbar instant search dropdown */
-#topSearchDrop{
-  display:none;
-  position:fixed;
-  top:60px;
-  left:0;right:0;
-  z-index:200;
-  background:#fff;
-  border-bottom:2px solid var(--primary);
-  box-shadow:0 8px 24px rgba(15,23,42,.15);
-  max-height:60vh;
-  overflow-y:auto;
-}
-#topSearchDrop.open{display:block;}
-.tsd-header{
-  padding:8px 16px;
-  background:var(--primary);
-  color:#fff;
-  font-size:12px;font-weight:700;
-  display:flex;justify-content:space-between;align-items:center;
-}
-.tsd-item{
-  display:grid;
-  grid-template-columns:1fr 90px 90px;
-  gap:8px;align-items:center;
-  padding:11px 16px;
-  border-bottom:1px solid var(--border);
-  cursor:pointer;
-  transition:background .12s;
-}
-.tsd-item:hover{background:#f0f4ff;}
-.tsd-item:last-child{border-bottom:none;}
-.tsd-name{font-size:14px;font-weight:700;color:var(--text);}
-.tsd-unit{font-size:12px;color:var(--muted);text-align:center;}
-.tsd-price{font-size:14px;font-weight:700;color:var(--success);text-align:right;}
-
-/* ═══════════════════════════════════════════
-   MAIN CONTAINER — POS (PRIMARY / ALWAYS VISIBLE)
-═══════════════════════════════════════════ */
-.container{
-  max-width:740px;
-  margin:20px auto;
-  padding:0 14px;
-}
-
-/* ═══════════════════════════════════════════
-   CARDS
-═══════════════════════════════════════════ */
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-sm);
-  margin-bottom:16px;
-  overflow:hidden;
-}
-.card-header{
-  padding:14px 18px 12px;
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;gap:8px;
-}
-.card-header-title{
-  font-size:14px;font-weight:700;color:var(--text);
-  display:flex;align-items:center;gap:7px;
-}
-.card-header-title .dot{
-  width:8px;height:8px;border-radius:50%;
-  background:var(--primary);display:inline-block;
-}
-.card-body{padding:16px 18px;}
-.card-count{margin-left:auto;font-size:12px;font-weight:600;
-  background:var(--primary-light);color:var(--primary);
-  padding:3px 10px;border-radius:20px;border:1px solid #bfdbfe;}
-
-/* ═══════════════════════════════════════════
-   FORM ELEMENTS
-═══════════════════════════════════════════ */
-.field-label{
-  display:block;font-size:12px;font-weight:600;
-  color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;
-}
-input,select{
-  width:100%;padding:11px 14px;
-  border:1.5px solid var(--border);
-  border-radius:var(--radius);
-  font-size:14px;font-family:var(--font);
-  background:#fff;color:var(--text);
-  outline:none;transition:border-color .2s,box-shadow .2s;
-  -webkit-appearance:none;
-}
-input:focus,select:focus{
-  border-color:var(--primary);
-  box-shadow:0 0 0 3px rgba(37,99,235,0.12);
-}
-input::placeholder{color:var(--muted2);}
-
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.form-field{margin-bottom:10px;}
-
-/* ═══════════════════════════════════════════
-   BUTTONS
-═══════════════════════════════════════════ */
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  gap:7px;padding:11px 18px;border:none;border-radius:var(--radius);
-  font-size:14px;font-weight:600;font-family:var(--font);
-  cursor:pointer;transition:all .2s;width:100%;
-}
-.btn-primary{background:var(--primary);color:#fff;}
-.btn-primary:hover{background:var(--primary-dark);}
-.btn-success{background:var(--success);color:#fff;}
-.btn-success:hover{filter:brightness(1.08);}
-.btn-danger{background:transparent;border:1.5px solid var(--border2);color:var(--danger);}
-.btn-danger:hover{background:var(--danger-light);border-color:var(--danger);}
-.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
-.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
-.btn-sm{padding:7px 12px;font-size:12px;width:auto;}
-.btn-warn{background:var(--warning);color:#fff;}
-.btn-warn:hover{filter:brightness(1.08);}
-.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-
-/* ═══════════════════════════════════════════
-   SEARCH BAR
-═══════════════════════════════════════════ */
-.search-wrap{position:relative;}
-.search-wrap input{padding-left:42px;}
-.search-icon{
-  position:absolute;left:14px;top:50%;
-  transform:translateY(-50%);
-  font-size:16px;pointer-events:none;
-  color:var(--muted2);
-}
-
-/* ═══════════════════════════════════════════
-   PRODUCT LIST — EXACT ORIGINAL GRID
-═══════════════════════════════════════════ */
-.prod-header{
-  display:grid;
-  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
-  gap:8px;padding:10px 14px;
-  background:#0f172a;color:#fff;
-  border-radius:var(--radius);
-  font-size:12px;font-weight:600;
-  margin-top:12px;align-items:center;
-  letter-spacing:.3px;
-}
-.prod-row{
-  display:grid;
-  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
-  gap:8px;align-items:center;
-  padding:12px 14px;
-  border:1.5px solid var(--border);
-  border-radius:var(--radius);
-  margin-top:7px;
-  background:var(--card);
-  transition:border-color .2s,box-shadow .2s;
-}
-.prod-row:hover{border-color:var(--border2);box-shadow:var(--shadow-sm);}
-.col-name{font-size:14px;font-weight:700;line-height:1.4;word-break:break-word;}
-.col-unit{text-align:center;font-size:12px;color:var(--muted);line-height:1.4;}
-.col-unit .u1{font-weight:600;color:var(--text);}
-.col-price{font-size:15px;font-weight:700;color:var(--success);text-align:center;}
-.col-action{display:flex;justify-content:flex-end;gap:6px;}
-.icon-btn{
-  width:30px;height:30px;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:9px;font-size:14px;cursor:pointer;
-  transition:all .2s;border:1.5px solid var(--border);
-  background:var(--card);
-}
-.icon-btn:hover{transform:translateY(-1px);}
-.edit-btn{border-color:#fde6/* ── Data sanitizer: Firestore rejects undefined, NaN, Infinity, functions.
-   Also does a JSON round-trip as final guard — guarantees plain serializable data.
-   Raw Unicode (Bangla text) is kept as-is; never encoded/decoded. ── */
-function _sanitize(obj){
-  // First pass: recursive clean
-  function _clean(v){
-    if(v === null || v === undefined) return null;
-    if(typeof v === 'number') return (isNaN(v)||!isFinite(v)) ? 0 : v;
-    if(typeof v === 'string') return v;   // Bangla/Unicode kept raw — no encoding
-    if(typeof v === 'boolean') return v;
-    if(Array.isArray(v)) return v.map(_clean);
-    if(typeof v === 'object'){
-      const out = {};
-      for(const [k, val] of Object.entries(v)){
-        if(typeof val === 'function') continue;
-        if(val === undefined) continue;
-        out[k] = _clean(val);
-      }
-      return out;
-    }
-    return String(v);
-  }
-  // Second pass: JSON round-trip removes any remaining non-serializable values
-  try{
-    return JSON.parse(JSON.stringify(_clean(obj)));
-  }catch(e){
-    console.warn('_sanitize JSON round-trip failed, using empty object', e);
-    return {};
-  }
-}
-
-/* ════════════════════════════════════════════
-   FIREBASE HELPER — expose to global scope
-   so existing functions can call fb.*()
-════════════════════════════════════════════ */
-window.fb = {
-
-  /* ── PRODUCTS ── */
-  async saveProduct(product){
-    if(!product || !product.id) return;
-    await setDoc(doc(db,'products', String(product.id)), _sanitize(product));
-  },
-  async deleteProduct(id){
-    if(!id) return;
-    await deleteDoc(doc(db,'products', String(id)));
-  },
-  listenProducts(callback, onError){
-    return onSnapshot(collection(db,'products'), snap=>{
-      const list = [];
-      snap.forEach(d => list.push(d.data()));
-      list.sort((a,b)=> (a.id||0) - (b.id||0));
-      callback(list);
-    }, err=>{ console.warn('listenProducts error',err); if(onError) onError(err); });
-  },
-
-  /* ── INVOICE COUNTER: transaction-safe increment ── */
-  async getAndIncrementCounter(){
-    const ref = doc(db,'meta','invoiceCounter');
-    let newVal = 1001;
-    await runTransaction(db, async tx=>{
-      const snap = await tx.get(ref);
-      newVal = snap.exists() ? (snap.data().value||1000) + 1 : 1001;
-      tx.set(ref, {value: newVal});
-    });
-    return newVal;
-  },
-  async saveInvoiceCounter(n){
-    await setDoc(doc(db,'meta','invoiceCounter'),{value: Number(n)||1000});
-  },
-  async getInvoiceCounter(){
-    const d = await getDoc(doc(db,'meta','invoiceCounter'));
-    return d.exists() ? (d.data().value||1000) : 1000;
-  },
-
-  /* ── SAVED INVOICES ── */
-  async saveInvoice(invoice){
-    if(!invoice || !invoice.id) return;
-    await setDoc(doc(db,'savedInvoices', String(invoice.id)), _sanitize(invoice));
-  },
-  async deleteInvoice(id){
-    if(!id) return;
-    await deleteDoc(doc(db,'savedInvoices', String(id)));
-  },
-  listenInvoices(callback, onError){
-    return onSnapshot(collection(db,'savedInvoices'), snap=>{
-      const list = [];
-      snap.forEach(d => list.push(d.data()));
-      list.sort((a,b)=> (b.id||0) - (a.id||0));
-      callback(list);
-    }, err=>{ console.warn('listenInvoices error',err); if(onError) onError(err); });
-  },
-
-  /* ── SHORT LIST (active) ── */
-  async saveShortList(items){
-    const safe = Array.isArray(items) ? items.map(i=>_sanitize(i)) : [];
-    await setDoc(doc(db,'meta','shortList'),{items: safe});
-  },
-  listenShortList(callback, onError){
-    return onSnapshot(doc(db,'meta','shortList'), snap=>{
-      callback(snap.exists() ? (snap.data().items||[]) : []);
-    }, err=>{ console.warn('listenShortList error',err); if(onError) onError(err); });
-  },
-
-  /* ── SHORT LIST HISTORY ── */
-  async saveSlHistory(entry){
-    if(!entry || !entry.id) return;
-    await setDoc(doc(db,'slHistory', String(entry.id)), _sanitize(entry));
-  },
-  async deleteSlHistory(id){
-    if(!id) return;
-    await deleteDoc(doc(db,'slHistory', String(id)));
-  },
-  listenSlHistory(callback, onError){
-    return onSnapshot(collection(db,'slHistory'), snap=>{
-      const list = [];
-      snap.forEach(d => list.push(d.data()));
-      list.sort((a,b)=> (b.id||0) - (a.id||0));
-      callback(list);
-    }, err=>{ console.warn('listenSlHistory error',err); if(onError) onError(err); });
-  },
-
-  /* ── MIGRATE: push all localStorage data to Firebase once ── */
-  async migrateFromLocalStorage(){
-    const batch = writeBatch(db);
-    let opCount = 0;
-    const MAX_BATCH = 490; // Firestore limit is 500 per batch
-
-    const flushBatch = async ()=>{
-      await batch.commit();
-      opCount = 0;
-    };
-
-    // products
-    const prods = JSON.parse(localStorage.getItem('backup')||'[]');
-    for(const p of prods){
-      if(!p || !p.id) continue;
-      batch.set(doc(db,'products',String(p.id)), _sanitize(p));
-      if(++opCount >= MAX_BATCH) await flushBatch();
-    }
-
-    // savedInvoices
-    const invs = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
-    for(const inv of invs){
-      if(!inv || !inv.id) continue;
-      batch.set(doc(db,'savedInvoices',String(inv.id)), _sanitize(inv));
-      if(++opCount >= MAX_BATCH) await flushBatch();
-    }
-
-    // shortList
-    const sl = JSON.parse(localStorage.getItem('shortList')||'[]');
-    batch.set(doc(db,'meta','shortList'),{items: sl.map(i=>_sanitize(i))});
-    opCount++;
-
-    // slHistory
-    const slH = JSON.parse(localStorage.getItem('slHistory')||'[]');
-    for(const h of slH){
-      if(!h || !h.id) continue;
-      batch.set(doc(db,'slHistory',String(h.id)), _sanitize(h));
-      if(++opCount >= MAX_BATCH) await flushBatch();
-    }
-
-    // invoiceCounter
-    const ic = parseInt(localStorage.getItem('invoiceCounter')||'1000');
-    batch.set(doc(db,'meta','invoiceCounter'),{value: isNaN(ic)?1000:ic});
-    opCount++;
-
-    if(opCount > 0) await batch.commit();
-    localStorage.setItem('fb_migrated','1');
-    console.log('✅ Migration to Firebase complete');
-  }
-};
-
-/* ════════════════════════════════════════════
-   BOOT: start real-time listeners once DOM ready
-   Guard: only runs once even if DOMContentLoaded fires twice
-════════════════════════════════════════════ */
-let _fbBootDone = false;
-document.addEventListener('DOMContentLoaded', async ()=>{
-  if(_fbBootDone) return;
-  _fbBootDone = true;
-
-  // ── Show syncing indicator ──
-  window._fbReady = false;
-  const showSyncBadge = (txt, color='#2563eb') => {
-    let b = document.getElementById('fbSyncBadge');
-    if(!b){
-      b = document.createElement('div');
-      b.id = 'fbSyncBadge';
-      b.style.cssText = `position:fixed;top:66px;right:10px;z-index:4000;
-        padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
-        color:#fff;font-family:'Hind Siliguri',sans-serif;
-        box-shadow:0 2px 8px rgba(0,0,0,.2);transition:background .3s;`;
-      document.body.appendChild(b);
-    }
-    b.style.background = color;
-    b.textContent = txt;
-  };
-  window._showSyncBadge = showSyncBadge; // expose for reconnect use
-  showSyncBadge('🔄 সংযুক্ত হচ্ছে...');
-
-  // ── Migrate old localStorage data to Firebase (runs only once) ──
-  if(!localStorage.getItem('fb_migrated')){
-    try{
-      await window.fb.migrateFromLocalStorage();
-      showSyncBadge('✅ ডেটা মাইগ্রেট হয়েছে','#16a34a');
-      setTimeout(()=>showSyncBadge('🟢 সংযুক্ত','#16a34a'), 2000);
-    } catch(e){
-      showSyncBadge('⚠️ মাইগ্রেশন ব্যর্থ','#d97706');
-      console.error('Migration error:',e);
-    }
-  } else {
-    showSyncBadge('🟢 সংযুক্ত','#16a34a');
-  }
-
-  // ── invoiceCounter: load once from Firebase ──
-  try{
-    const ic = await window.fb.getInvoiceCounter();
-    invoiceCounter = ic;
-    window.invoiceCounter = ic;
-  } catch(e){ console.warn('invoiceCounter load failed',e); }
-
-  // ── Helper: on listener error show offline badge ──
-  const _onListenerError = (name, err)=>{
-    console.warn(name + ' listener error (non-fatal):', err && err.message || err);
-    showSyncBadge('🔴 সংযোগ বিচ্ছিন্ন — রিফ্রেশ করুন','#dc2626');
-  };
-
-  // ── PRODUCTS: real-time listener — Firebase is source of truth ──
-  window.fb.listenProducts(list=>{
-    products = list;
-    window.products = list;
-    try{ localStorage.setItem('backup', JSON.stringify(list)); }catch(e){}
-    if(typeof renderData === 'function') renderData();
-    if(typeof updateStats === 'function') updateStats();
-    if(!window._fbReady){
-      window._fbReady = true;
-      showSyncBadge('🟢 সংযুক্ত','#16a34a');
-    }
-  }, err=>_onListenerError('products', err));
-
-  // ── SAVED INVOICES: real-time listener ──
-  window.fb.listenInvoices(list=>{
-    window._fbInvoices = list;
-    try{ localStorage.setItem('savedInvoices', JSON.stringify(list)); }catch(e){}
-    if(typeof renderSavedInvoices === 'function' &&
-       document.getElementById('savedInvoicesModal').classList.contains('open'))
-      renderSavedInvoices();
-    if(typeof renderBillBoxInvoices === 'function' &&
-       window.currentBillTab === 'saved')
-      renderBillBoxInvoices();
-  }, err=>_onListenerError('invoices', err));
-
-  // ── SHORT LIST: real-time listener ──
-  window.fb.listenShortList(items=>{
-    window.shortList = items;
-    shortList = items;
-    try{ localStorage.setItem('shortList', JSON.stringify(items)); }catch(e){}
-    if(typeof renderShortList === 'function') renderShortList();
-    if(typeof updateSlBadge === 'function') updateSlBadge();
-  }, err=>_onListenerError('shortList', err));
-
-  // ── SL HISTORY: real-time listener ──
-  window.fb.listenSlHistory(list=>{
-    window._fbSlHistory = list;
-    try{ localStorage.setItem('slHistory', JSON.stringify(list)); }catch(e){}
-    if(typeof renderSlHistory === 'function') renderSlHistory();
-  }, err=>_onListenerError('slHistory', err));
-
-});
-</script>
-<style>
-/* ═══════════════════════════════════════════
-   DESIGN TOKENS
-═══════════════════════════════════════════ */
-:root{
-  --bg:#f0f4ff;
-  --card:#ffffff;
-  --border:#dde3f0;
-  --border2:#c7d0e8;
-  --text:#0f172a;
-  --muted:#64748b;
-  --muted2:#94a3b8;
-  --primary:#2563eb;
-  --primary-light:#eff6ff;
-  --primary-dark:#1d4ed8;
-  --success:#16a34a;
-  --success-light:#f0fdf4;
-  --danger:#dc2626;
-  --danger-light:#fef2f2;
-  --warning:#d97706;
-  --warning-light:#fffbeb;
-  --shadow-sm:0 1px 3px rgba(15,23,42,0.08),0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md:0 4px 16px rgba(15,23,42,0.10),0 2px 6px rgba(15,23,42,0.06);
-  --shadow-lg:0 12px 40px rgba(15,23,42,0.16),0 4px 12px rgba(15,23,42,0.08);
-  --shadow-bill:0 20px 60px rgba(15,23,42,0.22),0 8px 20px rgba(15,23,42,0.10);
-  --radius:12px;
-  --radius-lg:18px;
-  --font:'Hind Siliguri',system-ui,sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{
-  font-family:var(--font);
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  padding-bottom:120px;
-}
-
-/* ═══════════════════════════════════════════
-   TOP BAR
-═══════════════════════════════════════════ */
-.topbar{
-  background:linear-gradient(135deg,#1e40af 0%,#2563eb 100%);
-  padding:0 16px;
-  height:60px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  position:sticky;top:0;z-index:50;
-  box-shadow:0 2px 12px rgba(30,64,175,0.3);
-}
-.topbar-brand{display:flex;align-items:center;gap:10px;}
-.topbar-logo{
-  width:38px;height:38px;border-radius:10px;
-  background:rgba(255,255,255,0.2);
-  border:1px solid rgba(255,255,255,0.3);
-  display:flex;align-items:center;justify-content:center;
-  font-size:20px;
-}
-.topbar-name{color:#fff;font-size:18px;font-weight:700;letter-spacing:-0.3px;}
-.topbar-sub{color:rgba(255,255,255,0.7);font-size:11px;margin-top:-2px;}
-.topbar-actions{display:flex;gap:8px;align-items:center;}
-.topbar-btn{
-  background:rgba(255,255,255,0.15);
-  border:1px solid rgba(255,255,255,0.25);
-  color:#fff;
-  padding:7px 12px;border-radius:9px;
-  font-size:12px;font-weight:600;cursor:pointer;
-  font-family:var(--font);
-  display:flex;align-items:center;gap:5px;
-  transition:background .2s;
-  white-space:nowrap;
-}
-.topbar-btn:hover{background:rgba(255,255,255,0.25);}
-
-/* ── Topbar search ── */
-.topbar-search-wrap{
-  position:relative;
-  flex:1;
-  max-width:260px;
-  min-width:0;
-}
-.topbar-search-wrap input{
-  width:100%;
-  padding:8px 14px 8px 36px;
-  background:rgba(255,255,255,0.15);
-  border:1px solid rgba(255,255,255,0.28);
-  border-radius:9px;
-  color:#fff;
-  font-size:13px;
-  font-family:var(--font);
-  outline:none;
-  transition:background .2s,border-color .2s;
-  box-shadow:none;
-}
-.topbar-search-wrap input::placeholder{color:rgba(255,255,255,0.6);}
-.topbar-search-wrap input:focus{
-  background:rgba(255,255,255,0.22);
-  border-color:rgba(255,255,255,0.55);
-  box-shadow:none;
-}
-.topbar-search-icon{
-  position:absolute;left:11px;top:50%;
-  transform:translateY(-50%);
-  font-size:14px;pointer-events:none;
-  color:rgba(255,255,255,0.7);
-}
-@media(max-width:520px){
-  .topbar-search-wrap{max-width:140px;}
-}
-
-/* Fix 3 — Topbar instant search dropdown */
-#topSearchDrop{
-  display:none;
-  position:fixed;
-  top:60px;
-  left:0;right:0;
-  z-index:200;
-  background:#fff;
-  border-bottom:2px solid var(--primary);
-  box-shadow:0 8px 24px rgba(15,23,42,.15);
-  max-height:60vh;
-  overflow-y:auto;
-}
-#topSearchDrop.open{display:block;}
-.tsd-header{
-  padding:8px 16px;
-  background:var(--primary);
-  color:#fff;
-  font-size:12px;font-weight:700;
-  display:flex;justify-content:space-between;align-items:center;
-}
-.tsd-item{
-  display:grid;
-  grid-template-columns:1fr 90px 90px;
-  gap:8px;align-items:center;
-  padding:11px 16px;
-  border-bottom:1px solid var(--border);
-  cursor:pointer;
-  transition:background .12s;
-}
-.tsd-item:hover{background:#f0f4ff;}
-.tsd-item:last-child{border-bottom:none;}
-.tsd-name{font-size:14px;font-weight:700;color:var(--text);}
-.tsd-unit{font-size:12px;color:var(--muted);text-align:center;}
-.tsd-price{font-size:14px;font-weight:700;color:var(--success);text-align:right;}
-
-/* ═══════════════════════════════════════════
-   MAIN CONTAINER — POS (PRIMARY / ALWAYS VISIBLE)
-═══════════════════════════════════════════ */
-.container{
-  max-width:740px;
-  margin:20px auto;
-  padding:0 14px;
-}
-
-/* ═══════════════════════════════════════════
-   CARDS
-═══════════════════════════════════════════ */
-.card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius-lg);
-  box-shadow:var(--shadow-sm);
-  margin-bottom:16px;
-  overflow:hidden;
-}
-.card-header{
-  padding:14px 18px 12px;
-  border-bottom:1px solid var(--border);
-  display:flex;align-items:center;gap:8px;
-}
-.card-header-title{
-  font-size:14px;font-weight:700;color:var(--text);
-  display:flex;align-items:center;gap:7px;
-}
-.card-header-title .dot{
-  width:8px;height:8px;border-radius:50%;
-  background:var(--primary);display:inline-block;
-}
-.card-body{padding:16px 18px;}
-.card-count{margin-left:auto;font-size:12px;font-weight:600;
-  background:var(--primary-light);color:var(--primary);
-  padding:3px 10px;border-radius:20px;border:1px solid #bfdbfe;}
-
-/* ═══════════════════════════════════════════
-   FORM ELEMENTS
-═══════════════════════════════════════════ */
-.field-label{
-  display:block;font-size:12px;font-weight:600;
-  color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px;
-}
-input,select{
-  width:100%;padding:11px 14px;
-  border:1.5px solid var(--border);
-  border-radius:var(--radius);
-  font-size:14px;font-family:var(--font);
-  background:#fff;color:var(--text);
-  outline:none;transition:border-color .2s,box-shadow .2s;
-  -webkit-appearance:none;
-}
-input:focus,select:focus{
-  border-color:var(--primary);
-  box-shadow:0 0 0 3px rgba(37,99,235,0.12);
-}
-input::placeholder{color:var(--muted2);}
-
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.form-field{margin-bottom:10px;}
-
-/* ═══════════════════════════════════════════
-   BUTTONS
-═══════════════════════════════════════════ */
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  gap:7px;padding:11px 18px;border:none;border-radius:var(--radius);
-  font-size:14px;font-weight:600;font-family:var(--font);
-  cursor:pointer;transition:all .2s;width:100%;
-}
-.btn-primary{background:var(--primary);color:#fff;}
-.btn-primary:hover{background:var(--primary-dark);}
-.btn-success{background:var(--success);color:#fff;}
-.btn-success:hover{filter:brightness(1.08);}
-.btn-danger{background:transparent;border:1.5px solid var(--border2);color:var(--danger);}
-.btn-danger:hover{background:var(--danger-light);border-color:var(--danger);}
-.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);}
-.btn-ghost:hover{border-color:var(--border2);color:var(--text);}
-.btn-sm{padding:7px 12px;font-size:12px;width:auto;}
-.btn-warn{background:var(--warning);color:#fff;}
-.btn-warn:hover{filter:brightness(1.08);}
-.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-
-/* ═══════════════════════════════════════════
-   SEARCH BAR
-═══════════════════════════════════════════ */
-.search-wrap{position:relative;}
-.search-wrap input{padding-left:42px;}
-.search-icon{
-  position:absolute;left:14px;top:50%;
-  transform:translateY(-50%);
-  font-size:16px;pointer-events:none;
-  color:var(--muted2);
-}
-
-/* ═══════════════════════════════════════════
-   PRODUCT LIST — EXACT ORIGINAL GRID
-═══════════════════════════════════════════ */
-.prod-header{
-  display:grid;
-  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
-  gap:8px;padding:10px 14px;
-  background:#0f172a;color:#fff;
-  border-radius:var(--radius);
-  font-size:12px;font-weight:600;
-  margin-top:12px;align-items:center;
-  letter-spacing:.3px;
-}
-.prod-row{
-  display:grid;
-  grid-template-columns:2.4fr 1fr 1fr 0.9fr;
-  gap:8px;align-items:center;
-  padding:12px 14px;
-  border:1.5px solid var(--border);
-  border-radius:var(--radius);
-  margin-top:7px;
-  background:var(--card);
-  transition:border-color .2s,box-shadow .2s;
-}
-.prod-row:hover{border-color:var(--border2);box-shadow:var(--shadow-sm);}
-.col-name{font-size:14px;font-weight:700;line-height:1.4;word-break:break-word;}
-.col-unit{text-align:center;font-size:12px;color:var(--muted);line-height:1.4;}
-.col-unit .u1{font-weight:600;color:var(--text);}
-.col-price{font-size:15px;font-weight:700;color:var(--success);text-align:center;}
-.col-action{display:flex;justify-content:flex-end;gap:6px;}
-.icon-btn{
-  width:30px;height:30px;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:9px;font-size:14px;cursor:pointer;
-  transition:all .2s;border:1.5px solid var(--border);
-  background:var(--card);
-}
-.icon-btn:hover{transform:translateY(-1px);}
 .edit-btn{border-color:#fde68a;color:var(--warning);}
 .edit-btn:hover{background:var(--warning-light);}
 .delete-btn{border-color:#fecaca;color:var(--danger);}
@@ -1998,35 +610,98 @@ input::placeholder{color:var(--muted2);}
   border-radius:var(--radius);padding:14px 12px;
   text-align:center;box-shadow:var(--shadow-sm);
 }
+.stat-box.nav-btn{
+  cursor:pointer;
+  transition:transform .15s,box-shadow .15s,border-color .15s;
+}
+.stat-box.nav-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-md);
+  border-color:var(--border2);
+}
+.stat-box.nav-btn:active{transform:scale(.97);}
+.stat-box.nav-btn.fp-open{
+  border-color:var(--primary);
+  box-shadow:0 0 0 2px rgba(37,99,235,.15);
+}
 .stat-val{font-size:22px;font-weight:700;color:var(--primary);}
 .stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+.nav-icon{font-size:26px;margin-bottom:2px;}
+.nav-lbl{font-size:12px;font-weight:700;color:var(--text);}
+.nav-cnt{
+  display:inline-block;min-width:16px;
+  background:var(--danger);color:#fff;
+  border-radius:8px;font-size:9px;font-weight:700;
+  padding:0 4px;line-height:16px;vertical-align:middle;
+  margin-left:3px;
+}
+.nav-cnt.zero{display:none;}
+
+/* Floating buttons — hidden, replaced by nav cards */
+#floatingBillBtn{display:none!important;}
+#fabBadge{display:none!important;}
 
 /* ═══════════════════════════════════════════
-   FLOATING BILL BUTTON — WhatsApp Style
+   FULL-PAGE SECTIONS (Bill Slip + Short List)
 ═══════════════════════════════════════════ */
-#floatingBillBtn{
-  position:fixed;
-  bottom:22px;right:20px;
-  width:62px;height:62px;
-  border-radius:50%;border:none;
-  background:linear-gradient(135deg,#16a34a,#15803d);
-  color:#fff;font-size:26px;
-  box-shadow:0 6px 24px rgba(22,163,74,0.45),0 2px 8px rgba(0,0,0,0.15);
-  cursor:pointer;z-index:999;
-  display:flex;align-items:center;justify-content:center;
-  transition:transform .2s,box-shadow .2s;
+.fp-section{
+  display:none;
+  position:fixed;inset:0;
+  background:var(--bg);
+  z-index:800;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
-#floatingBillBtn:hover{transform:scale(1.07);box-shadow:0 10px 30px rgba(22,163,74,0.5);}
-#floatingBillBtn:active{transform:scale(0.96);}
-#fabBadge{
-  position:absolute;top:-5px;right:-5px;
-  min-width:20px;height:20px;border-radius:10px;
-  background:var(--danger);color:#fff;
-  font-size:10px;font-weight:700;
-  display:none;align-items:center;justify-content:center;
-  padding:0 5px;border:2px solid #fff;
-  box-shadow:0 2px 6px rgba(220,38,38,.4);
+.fp-section.open{display:block;}
+.fp-topbar{
+  position:sticky;top:0;z-index:5;
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;
+  box-shadow:0 2px 8px rgba(15,23,42,.18);
 }
+.fp-topbar.bill-color{background:linear-gradient(135deg,#0f172a,#1e293b);}
+.fp-topbar.sl-color  {background:linear-gradient(135deg,#4c1d95,#5b21b6);}
+.fp-back{
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+  color:#fff;border-radius:9px;padding:6px 13px;
+  font-size:13px;font-weight:600;font-family:var(--font);
+  cursor:pointer;white-space:nowrap;
+  transition:background .15s;
+}
+.fp-back:hover{background:rgba(255,255,255,.22);}
+.fp-title{flex:1;color:#fff;font-size:16px;font-weight:700;}
+.fp-badge{
+  background:rgba(255,255,255,.15);color:#fff;
+  font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:20px;
+  white-space:nowrap;
+}
+/* Inner boxes lose popup chrome in full-page mode */
+.fp-section .bill-box{
+  position:static!important;display:flex!important;flex-direction:column;
+  width:100%!important;max-width:640px!important;
+  max-height:none!important;height:auto!important;
+  border-radius:0!important;border:none!important;
+  box-shadow:none!important;background:transparent!important;
+  animation:none!important;
+  margin:0 auto;padding-bottom:60px;
+}
+.fp-section .shortlist-box{
+  position:static!important;display:flex!important;flex-direction:column;
+  width:100%!important;max-width:640px!important;
+  max-height:none!important;height:auto!important;
+  border-radius:0!important;border:none!important;
+  box-shadow:none!important;background:transparent!important;
+  animation:none!important;
+  margin:0 auto;padding-bottom:60px;
+}
+/* Remove popup-internal close buttons and header (fp topbar replaces them) */
+.fp-section .bill-header{display:none!important;}
+.fp-section .sl-header  {display:none!important;}
+/* Remove scroll caps in full page */
+.fp-section .bill-body{overflow-y:visible!important;max-height:none!important;}
+.fp-section .sl-body   {overflow-y:visible!important;max-height:none!important;}
+.fp-section #slHistorySection{max-height:none!important;}
 
 /* ═══════════════════════════════════════════
    BILL POPUP — Floating Panel
@@ -2387,28 +1062,9 @@ input::placeholder{color:var(--muted2);}
 /* ═══════════════════════════════════════════
    SHORT LIST — Floating Button + Popup (Part 5)
 ═══════════════════════════════════════════ */
-#shortListBtn{
-  position:fixed;
-  bottom:100px;right:20px;
-  width:52px;height:52px;
-  border-radius:50%;border:none;
-  background:linear-gradient(135deg,#7c3aed,#6d28d9);
-  color:#fff;font-size:22px;
-  box-shadow:0 6px 24px rgba(124,58,237,0.4),0 2px 8px rgba(0,0,0,0.12);
-  cursor:pointer;z-index:997;
-  display:flex;align-items:center;justify-content:center;
-  transition:transform .2s,box-shadow .2s;
-}
-#shortListBtn:hover{transform:scale(1.07);}
-#shortListBtn:active{transform:scale(0.96);}
-#slBadge{
-  position:absolute;top:-4px;right:-4px;
-  min-width:18px;height:18px;border-radius:9px;
-  background:var(--warning);color:#fff;
-  font-size:10px;font-weight:700;
-  display:none;align-items:center;justify-content:center;
-  padding:0 4px;border:2px solid #fff;
-}
+/* shortListBtn hidden — replaced by nav card */
+#shortListBtn{display:none!important;}
+#slBadge{display:none!important;}
 .shortlist-box{
   display:none;
   position:fixed;
@@ -2522,21 +1178,29 @@ input::placeholder{color:var(--muted2);}
   .form-row{grid-template-columns:1fr;}
   .stats-strip{grid-template-columns:1fr 1fr 1fr;}
   .stat-val{font-size:18px;}
-  .bill-box{
-    bottom:0;right:0;left:0;
-    width:100%;max-width:100%;
-    border-radius:20px 20px 0 0;
-    max-height:82vh;
-  }
-  .shortlist-box{
-    bottom:0;right:0;left:0;
-    width:100%;max-width:100%;
-    border-radius:20px 20px 0 0;
-    max-height:80vh;
-  }
-  #floatingBillBtn{bottom:16px;right:16px;}
-  #shortListBtn{bottom:90px;right:16px;}
+  .nav-icon{font-size:22px!important;}
 }
+
+
+/* ═══════════════════════════════════════════
+   FULL-PAGE SECTIONS — Bill Slip + Short List
+═══════════════════════════════════════════ */
+.fp-section{display:none;position:fixed;inset:0;background:var(--bg);z-index:800;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.fp-section.open{display:block;}
+.fp-topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:11px 14px;box-shadow:0 2px 8px rgba(15,23,42,.18);}
+.fp-topbar.bill-color{background:linear-gradient(135deg,#0f172a,#1e293b);}
+.fp-topbar.sl-color{background:linear-gradient(135deg,#4c1d95,#5b21b6);}
+.fp-back{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;border-radius:9px;padding:6px 13px;font-size:13px;font-weight:600;font-family:var(--font);cursor:pointer;transition:background .15s;}
+.fp-back:hover{background:rgba(255,255,255,.22);}
+.fp-title{flex:1;color:#fff;font-size:16px;font-weight:700;}
+.fp-badge-top{background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;}
+.fp-section .bill-box{position:static!important;display:flex!important;flex-direction:column;width:100%!important;max-width:640px!important;max-height:none!important;height:auto!important;border-radius:0!important;border:none!important;box-shadow:none!important;background:transparent!important;animation:none!important;margin:0 auto;padding-bottom:60px;}
+.fp-section .shortlist-box{position:static!important;display:flex!important;flex-direction:column;width:100%!important;max-width:640px!important;max-height:none!important;height:auto!important;border-radius:0!important;border:none!important;box-shadow:none!important;background:transparent!important;animation:none!important;margin:0 auto;padding-bottom:60px;}
+.fp-section .bill-header{display:none!important;}
+.fp-section .sl-header{display:none!important;}
+.fp-section .bill-body{overflow-y:visible!important;max-height:none!important;}
+.fp-section .sl-body{overflow-y:visible!important;max-height:none!important;}
+.fp-section #slHistorySection{max-height:none!important;}
 
 @media print{
   body>*{display:none!important;}
@@ -2577,21 +1241,24 @@ input::placeholder{color:var(--muted2);}
 </div>
 <div class="container">
 
-  <!-- Stats Strip -->
+  <!-- Dashboard Nav Cards -->
   <div class="stats-strip">
+    <div class="stat-box nav-btn" id="navCardBill" onclick="openBillPage()" title="বিল স্লিপ">
+      <div class="nav-icon">🧾</div>
+      <div class="nav-lbl">বিল স্লিপ<span class="nav-cnt zero" id="navBillCnt">0</span></div>
+    </div>
+    <div class="stat-box nav-btn" id="navCardSL" onclick="openSLPage()" title="শর্ট লিস্ট">
+      <div class="nav-icon">📝</div>
+      <div class="nav-lbl">শর্ট লিস্ট<span class="nav-cnt zero" id="navSLCnt">0</span></div>
+    </div>
     <div class="stat-box">
       <div class="stat-val" id="statTotal">0</div>
       <div class="stat-lbl">মোট পণ্য</div>
     </div>
-    <div class="stat-box">
-      <div class="stat-val" id="statVisible">0</div>
-      <div class="stat-lbl">দেখাচ্ছে</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-val" id="statBill">0</div>
-      <div class="stat-lbl">বিল আইটেম</div>
-    </div>
   </div>
+  <!-- Hidden stubs so old JS writing statVisible/statBill doesn't crash -->
+  <span id="statVisible" style="display:none;"></span>
+  <span id="statBill" style="display:none;"></span>
 
   <!-- Add / Edit Product Card -->
   <div class="card">
@@ -2645,16 +1312,18 @@ input::placeholder{color:var(--muted2);}
 
 </div><!-- /container -->
 
+<!-- Stub buttons — kept so JS refs don't crash -->
+<button id="shortListBtn" style="display:none!important;" onclick="toggleShortList()"><span id="slBadge"></span></button>
 
 <!-- ═══════════════════════════════════════════
-     SHORT LIST FLOATING BUTTON (Part 5)
+     SHORT LIST — FULL PAGE SECTION
 ═══════════════════════════════════════════ -->
-<button id="shortListBtn" onclick="toggleShortList()" title="শর্ট লিস্ট">
-  📝
-  <span id="slBadge">0</span>
-</button>
-
-<!-- SHORT LIST POPUP -->
+<div class="fp-section" id="slPageSection">
+  <div class="fp-topbar sl-color">
+    <button class="fp-back" onclick="closeSLPage()">← ড্যাশবোর্ড</button>
+    <div class="fp-title">📝 শর্ট লিস্ট</div>
+    <span class="fp-badge-top" id="slPageBadge">0 আইটেম</span>
+  </div>
 <div class="shortlist-box" id="shortListBox">
   <div class="sl-header">
     <div class="sl-header-left">
@@ -2688,10 +1357,8 @@ input::placeholder{color:var(--muted2);}
     <div id="slItems"></div>
   </div>
   <div class="sl-footer">
-    <button class="sl-footer-btn clear" onclick="clearDoneItems()">✅ সম্পন্ন মুছুন</button>
-    <button class="sl-footer-btn clear" onclick="saveShortListAsHistory()" style="color:var(--primary);border-color:var(--primary);">💾 হিস্ট্রিতে সেভ</button>
+    <button class="sl-footer-btn clear" onclick="saveShortListAsHistory()" style="color:var(--primary);border-color:var(--primary);">💾 সেভ করুন</button>
     <button class="sl-footer-btn clear" onclick="exportShortListPDF()" style="color:#7c3aed;border-color:#7c3aed;">📄 PDF</button>
-    <button class="sl-footer-btn clear" onclick="clearAllShortList()" style="color:var(--danger);">🗑️ মুছুন</button>
   </div>
   <!-- FIX 3: Short list saved history section -->
   <div id="slHistorySection" style="border-top:1px solid var(--border);background:#f8fafc;flex-shrink:0;display:none;max-height:200px;overflow-y:auto;">
@@ -2702,36 +1369,23 @@ input::placeholder{color:var(--muted2);}
     </div>
     <div id="slHistoryList" style="padding:0 14px 10px;"></div>
   </div>
-</div>
+</div><!-- /shortListBox -->
+</div><!-- /slPageSection fp-section -->
+
+<!-- Stubs: hidden so JS refs don't crash -->
+<button id="floatingBillBtn" style="display:none!important;" onclick="toggleBillPanel()"><span id="fabBadge"></span></button>
+<span id="billDateStr" style="display:none;"></span>
 
 <!-- ═══════════════════════════════════════════
-     FLOATING BILL BUTTON — WhatsApp Style
+     BILL SLIP — FULL PAGE SECTION
 ═══════════════════════════════════════════ -->
-<button id="floatingBillBtn" onclick="toggleBillPanel()" title="বিল স্লিপ খুলুন">
-  🧾
-  <span id="fabBadge">0</span>
-</button>
-
-
-<!-- ═══════════════════════════════════════════
-     BILL POPUP — Floating Panel
-═══════════════════════════════════════════ -->
-<div class="bill-box" id="billBox">
-
-  <!-- Bill Header -->
-  <div class="bill-header">
-    <div class="bill-header-left">
-      <span class="bill-header-icon">🧾</span>
-      <div>
-        <div class="bill-header-title">বিল স্লিপ</div>
-        <div class="bill-header-sub" id="billDateStr">—</div>
-      </div>
-    </div>
-    <div class="bill-header-right">
-      <span class="bill-item-badge" id="billBadgeTop">0 আইটেম</span>
-      <button class="bill-close-btn" onclick="toggleBillPanel()">✕</button>
-    </div>
+<div class="fp-section" id="billPageSection">
+  <div class="fp-topbar bill-color">
+    <button class="fp-back" onclick="closeBillPage()">← ড্যাশবোর্ড</button>
+    <div class="fp-title">🧾 বিল স্লিপ</div>
+    <span class="fp-badge-top" id="billBadgeTop">0 আইটেম</span>
   </div>
+<div class="bill-box" id="billBox">
 
   <!-- FIX 2: Quick-access tab strip -->
   <div style="display:flex;border-bottom:1px solid var(--border);background:#f8fafc;flex-shrink:0;">
@@ -2850,6 +1504,7 @@ input::placeholder{color:var(--muted2);}
   </div>
 
 </div><!-- /bill-box -->
+</div><!-- /billPageSection fp-section -->
 
 
 <!-- ═══════════════════════════════════════════
@@ -2915,11 +1570,10 @@ input::placeholder{color:var(--muted2);}
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-        <button class="btn btn-primary" onclick="printInvoice()">🖨️ প্রিন্ট</button>
-        <button class="btn btn-success" onclick="downloadInvoice()">📄 PDF সেভ</button>
-        <button class="btn" style="background:#7c3aed;color:#fff;" onclick="printAndSaveInvoice()">💾 প্রিন্ট ও সেভ</button>
+      <!-- Action Buttons: Save (store) + PDF only -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn btn-primary" onclick="saveInvoice()">💾 সেভ করুন</button>
+        <button class="btn btn-success" onclick="downloadInvoice()">📄 PDF</button>
       </div>
 
       <!-- Live Preview -->
@@ -3461,27 +2115,31 @@ function closeTopSearch(){
 ═══════════════════════════════════════════ */
 /* Mobile floating icon helper */
 function isMobile(){ return window.innerWidth <= 520; }
-function hideFabOnMobile(){
-  if(!isMobile()) return;
-  document.getElementById('floatingBillBtn').style.display = 'none';
-  document.getElementById('shortListBtn').style.display = 'none';
-}
-function showFabOnMobile(){
-  if(!isMobile()) return;
-  document.getElementById('floatingBillBtn').style.display = '';
-  document.getElementById('shortListBtn').style.display = '';
-}
+/* Floating buttons removed — these are kept as no-ops so callsites don't break */
+function hideFabOnMobile(){}
+function showFabOnMobile(){}
 
+function openBillPage(){
+  document.getElementById('billPageSection').classList.add('open');
+  document.getElementById('navCardBill').classList.add('fp-open');
+  // bill-box must have .show for its internal tab logic to work
+  document.getElementById('billBox').classList.add('show');
+  // Update date string
+  const ds = document.getElementById('billDateStr');
+  if(ds) ds.textContent = nowStr();
+  // Focus search on desktop
+  try{ billSearch.focus(); }catch(e){}
+  document.body.style.overflow = 'hidden';
+}
+function closeBillPage(){
+  document.getElementById('billPageSection').classList.remove('open');
+  document.getElementById('navCardBill').classList.remove('fp-open');
+  document.body.style.overflow = '';
+}
 function toggleBillPanel(){
-  const box = document.getElementById('billBox');
-  box.classList.toggle('show');
-  if(box.classList.contains('show')){
-    document.getElementById('billDateStr').textContent = nowStr();
-    billSearch.focus();
-    hideFabOnMobile();
-  } else {
-    showFabOnMobile();
-  }
+  const sec = document.getElementById('billPageSection');
+  if(sec.classList.contains('open')) closeBillPage();
+  else openBillPage();
 }
 
 /* ═══════════════════════════════════════════
@@ -3566,14 +2224,15 @@ function _activateCustomMode(name){
   // Show unit dropdown, hide locked unit
   document.getElementById('smartUnitLocked').style.display = 'none';
   document.getElementById('smartUnitSelect').style.display = 'block';
-  // Clear price, let user fill
+  // Clear price, let user fill — do NOT call focus() here,
+  // cursor must stay in billSearch so user can finish typing
   document.getElementById('smartPrice').value = '';
   document.getElementById('smartPrice').readOnly = false;
   document.getElementById('smartPrice').style.background = '';
   document.getElementById('smartPriceHint').textContent = '(নতুন পণ্য)';
   _setSmartBadge('✏️ কাস্টম পণ্য', '#d97706');
   _showSmartFields();
-  document.getElementById('smartPrice').focus();
+  // NO focus() call — user stays in product name field until they press Tab or click
 }
 
 function selectBillProduct(id){
@@ -3808,13 +2467,22 @@ function resetBillAfterSave(){
 ═══════════════════════════════════════════ */
 function updateStats(){
   document.getElementById('statTotal').textContent = products.length;
-  document.getElementById('statBill').textContent  = billCart.length;
+  // statBill/statVisible are hidden stubs kept for JS compat
+  try{ document.getElementById('statBill').textContent = billCart.length; }catch(e){}
+  // Update bill nav badge via updateFab
+  updateFab(billCart.length);
 }
 
 function updateFab(cnt){
-  const badge = document.getElementById('fabBadge');
-  if(cnt>0){ badge.textContent=cnt; badge.style.display='flex'; }
-  else badge.style.display='none';
+  // Update nav card bill badge
+  const b = document.getElementById('navBillCnt');
+  if(b){
+    b.textContent = cnt;
+    b.classList.toggle('zero', cnt === 0);
+  }
+  // Also update fp-section top badge
+  const tb = document.getElementById('billBadgeTop');
+  if(tb) tb.textContent = cnt + ' আইটেম';
 }
 
 /* ═══════════════════════════════════════════
@@ -3933,55 +2601,13 @@ function refreshInvoicePreview(){
   document.getElementById('liveInvPreview').innerHTML = h;
 }
 
-function printInvoice(){
-  if(!billCart.length){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
-  const f = getInvoiceFields();
-  invoiceCounter++;
-  localStorage.setItem('invoiceCounter', invoiceCounter);
-  const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
-  const pw = window.open('','','width=800,height=700');
-  if(!pw){ toast("পপআপ ব্লক হয়েছে — ব্রাউজার অনুমতি দিন", 'err'); return; }
-  pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-    <title>ইনভয়েস #${invoiceCounter}</title>
-    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}@media print{body{padding:20px;}}</style>
-    </head><body>${h}</body></html>`);
-  pw.document.close(); pw.focus();
-  setTimeout(()=>{ try{ pw.print(); }catch(e){} }, 700);
-  resetBillAfterSave();
-}
-
-function downloadInvoice(){
-  if(!billCart.length){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
-  const f = getInvoiceFields();
-  invoiceCounter++;
-  localStorage.setItem('invoiceCounter', invoiceCounter);
-  const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
-  const full = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-    <title>ইনভয়েস #${invoiceCounter}</title>
-    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;}</style>
-    </head><body>${h}</body></html>`;
-  try{
-    const blob = new Blob([full],{type:'text/html'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href=url; a.download=`invoice-${invoiceCounter}.html`;
-    a.click(); URL.revokeObjectURL(url);
-    toast("ইনভয়েস সেভ হয়েছে ✅");
-    resetBillAfterSave();
-  }catch(e){ toast("ডাউনলোড ব্যর্থ হয়েছে", 'err'); }
-}
-
-// PART 2 — Print & Save Invoice (new feature)
-function printAndSaveInvoice(){
+/* ── saveInvoice: saves to system (Firebase + localStorage), no print ── */
+function saveInvoice(){
   if(!billCart.length){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
   const f = getInvoiceFields();
   const now = new Date();
   const subtotal = billCart.reduce((s,i)=>s+Number(i.total||0),0);
 
-  // Use Firebase transaction counter when available (prevents duplicate IDs across devices)
-  // Falls back to local counter if Firebase not ready
   const _doSave = (counter)=>{
     invoiceCounter = counter;
     localStorage.setItem('invoiceCounter', invoiceCounter);
@@ -3999,27 +2625,13 @@ function printAndSaveInvoice(){
       due:  parseFloat(bnToEn(f.due||'0'))||0,
       status: f.status
     };
-    // Save to localStorage cache
     try{
       const saved = JSON.parse(localStorage.getItem('savedInvoices')||'[]');
       saved.unshift(record);
       localStorage.setItem('savedInvoices', JSON.stringify(saved));
     }catch(e){}
-    // Save to Firebase (sanitized)
     if(window.fb){
       window.fb.saveInvoice(record).catch(e=>console.error('Invoice save error',e));
-    }
-    // Print
-    const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, invoiceCounter, f.paid, f.due, f.status);
-    const pw = window.open('','','width=800,height=700');
-    if(pw){
-      pw.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-        <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
-        <title>Invoice #${invoiceCounter}</title>
-        <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;color:#0f172a;}@media print{body{padding:20px;}}</style>
-        </head><body>${h}</body></html>`);
-      pw.document.close(); pw.focus();
-      setTimeout(()=>{ try{ pw.print(); }catch(e){} }, 700);
     }
     toast(`ইনভয়েস #${invoiceCounter} সেভ হয়েছে ✅`);
     closeModal('invoiceModal');
@@ -4027,7 +2639,6 @@ function printAndSaveInvoice(){
   };
 
   if(window.fb && window._fbReady){
-    // Use atomic Firebase transaction to get unique counter
     window.fb.getAndIncrementCounter()
       .then(counter=>_doSave(counter))
       .catch(()=>{ invoiceCounter++; _doSave(invoiceCounter); });
@@ -4036,6 +2647,32 @@ function printAndSaveInvoice(){
     _doSave(invoiceCounter);
   }
 }
+
+/* ── downloadInvoice: generates PDF file only, no system save ── */
+function downloadInvoice(){
+  if(!billCart.length){ toast("বিলে কোনো পণ্য নেই", 'err'); return; }
+  const f = getInvoiceFields();
+  // Use a temporary counter for the PDF filename — does NOT increment system counter
+  const tmpNum = invoiceCounter + 1;
+  const h = buildInvoiceHTML('মো: ছৈয়দ স্টোর', f.customer, f.custPhone, f.custAddress, tmpNum, f.paid, f.due, f.status);
+  const full = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Invoice-${tmpNum}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Hind Siliguri',sans-serif;padding:30px;background:#fff;}</style>
+    </head><body>${h}</body></html>`;
+  try{
+    const blob = new Blob([full],{type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download=`invoice-${tmpNum}.html`;
+    a.click(); URL.revokeObjectURL(url);
+    toast("PDF ডাউনলোড হয়েছে ✅");
+  }catch(e){ toast("ডাউনলোড ব্যর্থ হয়েছে", 'err'); }
+}
+
+/* ── printInvoice / printAndSaveInvoice: kept as stubs (buttons removed, logic preserved for any external call) ── */
+function printInvoice(){ saveInvoice(); }
+function printAndSaveInvoice(){ saveInvoice(); }
 
 /* ═══════════════════════════════════════════
    PART 2 — SAVED INVOICES SYSTEM
@@ -4067,7 +2704,7 @@ function renderSavedInvoices(){
   el.innerHTML = filtered.map(inv=>{
     const statusColor = inv.status==='পরিশোধিত'?'#16a34a':inv.status==='বাকি'?'#dc2626':'#d97706';
     const itemNames = (inv.items||[]).map(i=>i.name).slice(0,3).join(', ')+(inv.items.length>3?'...':'');
-    return `<div style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:10px;background:var(--card);">
+    return `<div onclick="openEditInvoice(${inv.id})" style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-top:10px;background:var(--card);cursor:pointer;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -4081,9 +2718,8 @@ function renderSavedInvoices(){
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:18px;font-weight:700;color:var(--success);">৳${Number(inv.total).toFixed(0)}</div>
           ${inv.due>0?`<div style="font-size:11px;color:var(--danger);">বাকি ৳${Number(inv.due).toFixed(0)}</div>`:''}
-          <div style="display:flex;gap:5px;margin-top:6px;justify-content:flex-end;">
-            <button onclick="openEditInvoice(${inv.id})" style="padding:4px 10px;border:1px solid #bfdbfe;border-radius:7px;background:transparent;color:var(--primary);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);">✏️ এডিট</button>
-            <button onclick="deleteSavedInvoice(${inv.id})" style="padding:4px 10px;border:1px solid #fecaca;border-radius:7px;background:transparent;color:var(--danger);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);">🗑️ ডিলিট</button>
+          <div style="margin-top:8px;">
+            <button onclick="event.stopPropagation();deleteSavedInvoice(${inv.id})" style="padding:4px 10px;border:1px solid #fecaca;border-radius:7px;background:transparent;color:var(--danger);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);">🗑️ ডিলিট</button>
           </div>
         </div>
       </div>
@@ -4347,7 +2983,7 @@ function renderBillBoxInvoices(){
 
   el.innerHTML = filtered.slice(0,20).map(inv=>{
     const sc = inv.status==='পরিশোধিত'?'#16a34a':inv.status==='বাকি'?'#dc2626':'#d97706';
-    return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;">
+    return `<div onclick="openEditInvoice(${inv.id})" style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:#fff;cursor:pointer;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.boxShadow=''">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:700;color:var(--primary);">#${inv.id}
@@ -4359,10 +2995,8 @@ function renderBillBoxInvoices(){
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:15px;font-weight:700;color:var(--success);">৳${Number(inv.total).toFixed(0)}</div>
           ${inv.due>0?`<div style="font-size:10px;color:var(--danger);">বাকি ৳${Number(inv.due).toFixed(0)}</div>`:''}
-          <div style="display:flex;gap:3px;margin-top:4px;justify-content:flex-end;">
-            <button onclick="openEditInvoice(${inv.id})"
-              style="padding:2px 7px;border:1px solid #bfdbfe;border-radius:5px;background:transparent;color:var(--primary);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">👁️</button>
-            <button onclick="deleteSavedInvoice(${inv.id});renderBillBoxInvoices();"
+          <div style="margin-top:5px;">
+            <button onclick="event.stopPropagation();deleteSavedInvoice(${inv.id});renderBillBoxInvoices();"
               style="padding:2px 7px;border:1px solid #fecaca;border-radius:5px;background:transparent;color:var(--danger);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">🗑️</button>
           </div>
         </div>
@@ -4721,36 +3355,16 @@ function dismissInstall(){ dismissPwaModal(); }
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     document.querySelectorAll('.modal-overlay.open').forEach(o=>o.classList.remove('open'));
-    document.getElementById('billBox').classList.remove('show');
-    document.getElementById('shortListBox').classList.remove('show');
-    showFabOnMobile();
+    // Close full-page sections
+    if(document.getElementById('billPageSection').classList.contains('open')) closeBillPage();
+    if(document.getElementById('slPageSection').classList.contains('open')) closeSLPage();
   }
 });
 
-// TASK 3 FIX: Use mousedown (fires before blur/click) and explicitly exclude
-// the search results container so clicking a result never closes the popup.
+// Bill and ShortList now open as full pages — outside-click close removed.
+// Handler kept as stub to avoid reference errors.
 document.addEventListener('mousedown',e=>{
-  const billBox = document.getElementById('billBox');
-  const fabBtn  = document.getElementById('floatingBillBtn');
-  const results = document.getElementById('billSearchResults');
-  const slBox   = document.getElementById('shortListBox');
-  const slBtn   = document.getElementById('shortListBtn');
-
-  // Close bill box if click is outside
-  if(billBox.classList.contains('show')
-    && !billBox.contains(e.target)
-    && !fabBtn.contains(e.target)
-    && !results.contains(e.target)){
-    billBox.classList.remove('show');
-    showFabOnMobile();
-  }
-  // Close shortlist box if click is outside
-  if(slBox.classList.contains('show')
-    && !slBox.contains(e.target)
-    && !slBtn.contains(e.target)){
-    slBox.classList.remove('show');
-    showFabOnMobile();
-  }
+  // no-op: full-page sections are closed via back button only
 });
 
 /* ═══════════════════════════════════════════
@@ -4766,24 +3380,31 @@ function saveShortList(){
   updateSlBadge();
 }
 
-function toggleShortList(){
-  const box = document.getElementById('shortListBox');
-  box.classList.toggle('show');
-  if(box.classList.contains('show')){
-    renderShortList();
-    // Show history section if there are saved histories
-    const histories = JSON.parse(localStorage.getItem('slHistory')||'[]');
-    if(histories.length){
-      document.getElementById('slHistorySection').style.display = 'block';
-      slHistoryVisible = true;
-      document.getElementById('slHistoryToggleBtn').textContent = 'লুকান';
-      renderSlHistory();
-    }
-    document.getElementById('slSearch').focus();
-    hideFabOnMobile();
-  } else {
-    showFabOnMobile();
+function openSLPage(){
+  document.getElementById('slPageSection').classList.add('open');
+  document.getElementById('navCardSL').classList.add('fp-open');
+  document.getElementById('shortListBox').classList.add('show');
+  renderShortList();
+  const histories = window._fbSlHistory || JSON.parse(localStorage.getItem('slHistory')||'[]');
+  if(histories.length){
+    document.getElementById('slHistorySection').style.display = 'block';
+    slHistoryVisible = true;
+    document.getElementById('slHistoryToggleBtn').textContent = 'লুকান';
+    renderSlHistory();
   }
+  try{ document.getElementById('slSearch').focus(); }catch(e){}
+  document.body.style.overflow = 'hidden';
+  _updateSLPageBadge();
+}
+function closeSLPage(){
+  document.getElementById('slPageSection').classList.remove('open');
+  document.getElementById('navCardSL').classList.remove('fp-open');
+  document.body.style.overflow = '';
+}
+function toggleShortList(){
+  const sec = document.getElementById('slPageSection');
+  if(sec.classList.contains('open')) closeSLPage();
+  else openSLPage();
 }
 
 function searchSlProducts(){
@@ -4879,11 +3500,19 @@ function renderShortList(){
   ).join('');
 }
 
+function _updateSLPageBadge(){
+  const cnt = shortList.filter(i=>!i.done).length;
+  const b = document.getElementById('navSLCnt');
+  if(b){ b.textContent=cnt; b.classList.toggle('zero', cnt===0); }
+  const tb = document.getElementById('slPageBadge');
+  if(tb) tb.textContent = cnt + ' আইটেম';
+}
 function updateSlBadge(){
   const cnt = shortList.filter(i=>!i.done).length;
+  // Legacy stub badge (hidden)
   const badge = document.getElementById('slBadge');
-  if(cnt>0){ badge.textContent=cnt; badge.style.display='flex'; }
-  else badge.style.display='none';
+  if(badge){ badge.textContent=cnt; }
+  _updateSLPageBadge();
 }
 
 /* ═══════════════════════════════════════════
@@ -5028,16 +3657,14 @@ function renderSlHistory(){
     return;
   }
   el.innerHTML = histories.map(h=>`
-    <div style="border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:7px;background:#fff;">
+    <div onclick="openSlPreview(${h.id})" style="border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:7px;background:#fff;cursor:pointer;transition:box-shadow .15s;" onmouseover="this.style.boxShadow='var(--shadow-sm)'" onmouseout="this.style.boxShadow=''">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:700;color:var(--text);">${h.savedAt} ${h.savedTime}</div>
           <div style="font-size:11px;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${h.items.length} টি পণ্য — ${h.items.slice(0,3).map(i=>i.name).join(', ')}${h.items.length>3?'...':''}</div>
         </div>
-        <div style="display:flex;gap:4px;flex-shrink:0;">
-          <button onclick="openSlPreview(${h.id})"
-            style="padding:3px 8px;border:1px solid #c4b5fd;border-radius:6px;background:transparent;color:#7c3aed;font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">👁️ দেখুন</button>
-          <button onclick="deleteSlHistory(${h.id})"
+        <div style="flex-shrink:0;">
+          <button onclick="event.stopPropagation();deleteSlHistory(${h.id})"
             style="padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:transparent;color:var(--danger);font-size:10px;font-weight:600;cursor:pointer;font-family:var(--font);">🗑️</button>
         </div>
       </div>
