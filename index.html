@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
       b.style.cssText = `position:fixed;top:66px;right:10px;z-index:4000;
         padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;
         color:#fff;font-family:'Hind Siliguri',sans-serif;
-        box-shadow:0 2px 8px rgba(0,0,0,.2);transition:background .3s;`;
+        box-shadow:0 2px 8px rgba(0,0,0,.2);transition:background .3s;display:none;`;
       document.body.appendChild(b);
     }
     b.style.background = color;
@@ -1251,9 +1251,9 @@ input::placeholder{color:var(--muted2);}
       <div class="nav-icon">📝</div>
       <div class="nav-lbl">শর্ট লিস্ট<span class="nav-cnt zero" id="navSLCnt">0</span></div>
     </div>
-    <div class="stat-box">
-      <div class="stat-val" id="statTotal">0</div>
-      <div class="stat-lbl">মোট পণ্য</div>
+    <div class="stat-box nav-btn" onclick="openCalcModal()" title="ক্যালকুলেটর">
+      <div class="nav-icon">🧮</div>
+      <div class="nav-lbl">ক্যালকুলেটর</div>
     </div>
   </div>
   <!-- Hidden stubs so old JS writing statVisible/statBill doesn't crash -->
@@ -2466,7 +2466,7 @@ function resetBillAfterSave(){
    STATS
 ═══════════════════════════════════════════ */
 function updateStats(){
-  document.getElementById('statTotal').textContent = products.length;
+  try{ document.getElementById('statTotal').textContent = products.length; }catch(e){}
   // statBill/statVisible are hidden stubs kept for JS compat
   try{ document.getElementById('statBill').textContent = billCart.length; }catch(e){}
   // Update bill nav badge via updateFab
@@ -3795,6 +3795,89 @@ window.addEventListener('pageshow', function(e){
   renderData();
   updateStats();
 });
+</script>
+
+<!-- CALCULATOR MODAL v17 -->
+<style>
+#cmOverlay{position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(3px);}
+#cmOverlay.open{opacity:1;pointer-events:all;}
+#cmBox{background:#fff;border:1px solid #dde3f0;border-radius:18px;width:100%;max-width:320px;box-shadow:0 12px 40px rgba(15,23,42,.16);transform:scale(.95);transition:transform .2s;overflow:hidden;}
+#cmOverlay.open #cmBox{transform:scale(1);}
+#cmTopBar{padding:14px 18px;border-bottom:1px solid #dde3f0;display:flex;align-items:center;justify-content:space-between;}
+#cmTopBar span{font-size:16px;font-weight:700;font-family:'Hind Siliguri',sans-serif;color:#0f172a;}
+#cmClose{width:32px;height:32px;border-radius:9px;border:1.5px solid #dde3f0;background:transparent;color:#64748b;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+#cmClose:hover{border-color:#dc2626;color:#dc2626;background:#fef2f2;}
+#cmBody{padding:16px;}
+#cmDisplay{background:#0f172a;border-radius:10px;padding:12px 14px;margin-bottom:12px;text-align:right;min-height:68px;display:flex;flex-direction:column;justify-content:flex-end;}
+#cmExpr{font-size:12px;color:#64748b;min-height:16px;word-break:break-all;}
+#cmResult{font-size:26px;font-weight:700;color:#fff;word-break:break-all;line-height:1.25;}
+#cmGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.cb{padding:13px 6px;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Hind Siliguri',sans-serif;transition:filter .1s;}
+.cb:active{filter:brightness(.88);}
+.cn{background:#f1f5f9;color:#0f172a;}
+.co{background:#dbeafe;color:#2563eb;}
+.ceq{background:#2563eb;color:#fff;grid-column:span 2;}
+.cc{background:#fee2e2;color:#dc2626;}
+.cd{background:#fef9c3;color:#92400e;}
+.c2{grid-column:span 2;}
+</style>
+<div id="cmOverlay" onclick="if(event.target===this)closeCM()">
+  <div id="cmBox">
+    <div id="cmTopBar"><span>&#x1F9EE; &#x995;&#x9CD;&#x9AF;&#x9BE;&#x9B2;&#x995;&#x9C1;&#x9B2;&#x9C7;&#x99F;&#x9B0;</span><button id="cmClose" onclick="closeCM()">&#x2715;</button></div>
+    <div id="cmBody">
+      <div id="cmDisplay"><div id="cmExpr"></div><div id="cmResult">0</div></div>
+      <div id="cmGrid">
+        <button class="cb cc"  onclick="ca('C')">C</button>
+        <button class="cb cd"  onclick="ca('DEL')">&#x232B;</button>
+        <button class="cb co"  onclick="ca('%')">%</button>
+        <button class="cb co"  onclick="ca('/')">&#xF7;</button>
+        <button class="cb cn"  onclick="ca('7')">7</button>
+        <button class="cb cn"  onclick="ca('8')">8</button>
+        <button class="cb cn"  onclick="ca('9')">9</button>
+        <button class="cb co"  onclick="ca('*')">&#xD7;</button>
+        <button class="cb cn"  onclick="ca('4')">4</button>
+        <button class="cb cn"  onclick="ca('5')">5</button>
+        <button class="cb cn"  onclick="ca('6')">6</button>
+        <button class="cb co"  onclick="ca('-')">&#x2212;</button>
+        <button class="cb cn"  onclick="ca('1')">1</button>
+        <button class="cb cn"  onclick="ca('2')">2</button>
+        <button class="cb cn"  onclick="ca('3')">3</button>
+        <button class="cb co"  onclick="ca('+')">+</button>
+        <button class="cb cn c2" onclick="ca('0')">0</button>
+        <button class="cb cn"  onclick="ca('.')">.</button>
+        <button class="cb ceq" onclick="ca('=')">=</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+var ex="",cur="0",ev=false;
+function ui(){document.getElementById("cmExpr").textContent=ex;document.getElementById("cmResult").textContent=cur;}
+function calc(s){
+  try{
+    var clean=s.replace(/[^0-9+\-*\/.% ()]/g,"");
+    var r=Function("return("+clean+")")();
+    return isFinite(r)?parseFloat(r.toPrecision(10)).toString():"Error";
+  }catch(e){return"Error";}
+}
+window.openCalcModal=function(){ex="";cur="0";ev=false;ui();document.getElementById("cmOverlay").classList.add("open");};
+window.closeCM=function(){document.getElementById("cmOverlay").classList.remove("open");};
+window.ca=function(k){
+  if(k==="C"){ex="";cur="0";ev=false;}
+  else if(k==="DEL"){if(ev){ex="";cur="0";ev=false;}else{cur=cur.length>1?cur.slice(0,-1):"0";}}
+  else if(k==="="){if(!(ex+cur))return;var r=calc(ex+cur);ex=ex+cur+" =";cur=r;ev=true;}
+  else if("+-*/%".indexOf(k)>=0){if(ev){ex=cur;ev=false;}else{ex+=cur;}ex+=" "+k+" ";cur="0";}
+  else{if(ev){ex="";ev=false;cur="0";}if(k==="."){if(cur.indexOf(".")>=0)return;cur+="."; }else{cur=cur==="0"?k:cur+k;}}
+  ui();
+};
+document.addEventListener("keydown",function(e){
+  if(!document.getElementById("cmOverlay").classList.contains("open"))return;
+  var m={"Enter":"=","=":"=","Backspace":"DEL","Escape":"C","+":"+","-":"-","*":"*","/":"/",".":".",",":"."};
+  var kk=m[e.key]||(e.key>="0"&&e.key<="9"?e.key:null);
+  if(kk){e.preventDefault();ca(kk);}
+});
+})();
 </script>
 </body>
 </html>
