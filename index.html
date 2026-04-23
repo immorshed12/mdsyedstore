@@ -18,7 +18,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   getFirestore, doc, collection,
   setDoc, deleteDoc, onSnapshot,
-  getDoc, getDocs, writeBatch, runTransaction
+  getDoc, getDocs, writeBatch, runTransaction,
+  enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* ── Firebase config ── */
@@ -33,6 +34,15 @@ const firebaseConfig = {
 
 const fbApp = initializeApp(firebaseConfig);
 const db    = getFirestore(fbApp);
+
+/* ── Offline persistence: data available even without network ── */
+enableIndexedDbPersistence(db).catch(err => {
+  if(err.code === 'failed-precondition'){
+    console.warn('Offline persistence: multiple tabs open, persistence enabled in first tab only.');
+  } else if(err.code === 'unimplemented'){
+    console.warn('Offline persistence: browser does not support IndexedDB.');
+  }
+});
 
 /* ── Data sanitizer: Firestore rejects undefined, NaN, Infinity, functions.
    Also does a JSON round-trip as final guard — guarantees plain serializable data.
@@ -3144,8 +3154,13 @@ function _genPngIcon(size){
 
 /* ── Service Worker: network-first for navigation, cache-first for assets ── */
 const SW_CODE = `
-const CACHE='choyed-pos-v4';
-const PRECACHE=[location.pathname||'/'];
+const CACHE='choyed-pos-v5';
+const PRECACHE=[
+  location.pathname||'/',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js',
+  'https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap'
+];
 self.addEventListener('install',e=>{
   e.waitUntil(
     caches.open(CACHE)
@@ -3178,7 +3193,7 @@ self.addEventListener('fetch',e=>{
     caches.match(req).then(r=>{
       if(r) return r;
       return fetch(req).then(res=>{
-        if(res && res.status===200 && res.type==='basic'){
+        if(res && res.status===200 && (res.type==='basic'||res.type==='cors')){
           const clone=res.clone();
           caches.open(CACHE).then(c=>c.put(req,clone));
         }
