@@ -1637,6 +1637,9 @@ input::placeholder{color:var(--muted2);}
         <button class="topbar-btn" id="previewSlEditBtn"
           style="background:#7c3aed;border-color:#7c3aed;color:#fff;font-size:11px;"
           onclick="loadSlFromPreview()">✏️ এডিট করুন</button>
+        <button class="topbar-btn"
+          style="background:#16a34a;border-color:#16a34a;color:#fff;font-size:11px;"
+          onclick="downloadSlPdf()">⬇️ PDF</button>
         <button class="modal-close" onclick="closeModal('previewSlModal')">✕</button>
       </div>
     </div>
@@ -3751,6 +3754,94 @@ function deleteSlHistory(id){
   toast("হিস্ট্রি মুছে গেছে", 'info');
 }
 
+function downloadSlPdf(){
+  const id = _previewSlId;
+  if(!id){ toast("কোনো তালিকা নির্বাচিত নেই", "err"); return; }
+  const histories = window._fbSlHistory || JSON.parse(localStorage.getItem('slHistory')||'[]');
+  const h = histories.find(e=>e.id===id);
+  if(!h){ toast("তালিকা পাওয়া যায়নি", 'err'); return; }
+
+  const pending = h.items.filter(i=>!i.done);
+  const done    = h.items.filter(i=>i.done);
+
+  const rowHtml = (items, label, color) => {
+    if(!items.length) return '';
+    const rows = items.map(item=>`
+      <tr>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;">
+          ${item.done ? '✅' : '⏳'}
+        </td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-weight:600;${item.done?'text-decoration:line-through;color:#9ca3af;':''}">
+          ${item.name}
+        </td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;color:#6b7280;">
+          ${item.qty ? item.qty+' '+item.unit : '—'}
+        </td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:12px;">
+          ${item.note || ''}
+        </td>
+      </tr>`).join('');
+    return `
+      <tr><td colspan="4" style="padding:10px 10px 4px;font-size:13px;font-weight:700;color:${color};">${label}</td></tr>
+      ${rows}`;
+  };
+
+  const full = `<!DOCTYPE html><html><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>শর্ট লিস্ট — ${h.savedAt}</title>
+  <style>
+    body{font-family:'Hind Siliguri',system-ui,sans-serif;margin:0;padding:20px;background:#f9fafb;color:#111827;}
+    .card{background:#fff;border-radius:14px;padding:20px 24px;max-width:600px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,.08);}
+    .header{text-align:center;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #ede9fe;}
+    .store-name{font-size:22px;font-weight:700;color:#7c3aed;}
+    .store-sub{font-size:13px;color:#6b7280;margin-top:2px;}
+    .meta{font-size:12px;color:#9ca3af;margin-top:6px;}
+    table{width:100%;border-collapse:collapse;margin-top:14px;}
+    th{padding:8px 10px;text-align:left;background:#f5f3ff;color:#7c3aed;font-size:12px;font-weight:700;border-bottom:2px solid #ede9fe;}
+    .footer{margin-top:18px;text-align:center;font-size:11px;color:#9ca3af;padding-top:12px;border-top:1px solid #e5e7eb;}
+    @media print{body{background:#fff;padding:0;}.card{box-shadow:none;}}
+  </style>
+</head><body>
+  <div class="card">
+    <div class="header">
+      <div class="store-name">📝 শর্ট লিস্ট</div>
+      <div class="store-sub">মো: ছৈয়দ স্টোর POS</div>
+      <div class="meta">তারিখ: ${h.savedAt} ${h.savedTime} · মোট ${h.items.length} পণ্য</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px;">অবস্থা</th>
+          <th>পণ্যের নাম</th>
+          <th>পরিমাণ</th>
+          <th>নোট</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowHtml(pending, '⏳ বাকি ('+pending.length+')', '#d97706')}
+        ${rowHtml(done,    '✅ সম্পন্ন ('+done.length+')',  '#16a34a')}
+      </tbody>
+    </table>
+    <div class="footer">মো: ছৈয়দ স্টোর POS — Generated ${new Date().toLocaleString('bn-BD')}</div>
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+
+  try{
+    const blob = new Blob([full], {type:'text/html'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `shortlist-${h.savedAt.replace(/\//g,'-')}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("PDF ডাউনলোড হচ্ছে ✅", 'ok');
+  } catch(e){
+    toast("ডাউনলোড ব্যর্থ হয়েছে", 'err');
+  }
+}
+
 /* FIX 2 — Load a saved shortlist history back into active list for editing */
 function loadSlHistoryForEdit(id){
   // Always use Firebase cache as source of truth for cross-device access
@@ -3830,7 +3921,7 @@ window.addEventListener('pageshow', function(e){
   position:fixed;inset:0;
   background:rgba(0,0,0,.75);
   z-index:5000;
-  display:flex;align-items:flex-end;justify-content:center;
+  display:none;align-items:flex-end;justify-content:center;
   opacity:0;pointer-events:none;
   transition:opacity .22s ease;
   backdrop-filter:blur(10px);
@@ -4019,8 +4110,8 @@ function calc(s){
     return isFinite(r)?parseFloat(r.toPrecision(10)).toString():"Error";
   }catch(e){return"Error";}
 }
-window.openCalcModal=function(){ex="";cur="0";ev=false;ui();document.getElementById("cmOverlay").classList.add("open");};
-window.closeCM=function(){document.getElementById("cmOverlay").classList.remove("open");};
+window.openCalcModal=function(){ex="";cur="0";ev=false;ui();var el=document.getElementById("cmOverlay");el.style.display="flex";requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add("open");});});};
+window.closeCM=function(){var el=document.getElementById("cmOverlay");el.classList.remove("open");setTimeout(function(){if(!el.classList.contains("open"))el.style.display="";},260);};
 window.ca=function(k){
   if(k==="C"){ex="";cur="0";ev=false;}
   else if(k==="DEL"){if(ev){ex="";cur="0";ev=false;}else{cur=cur.length>1?cur.slice(0,-1):"0";}}
