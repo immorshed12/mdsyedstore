@@ -4463,13 +4463,13 @@ document.getElementById('aiInput').addEventListener('input',function(){this.styl
 <style>
 /* ── FAB ── */
 #aiFab{
-  position:fixed;bottom:88px;right:18px;z-index:6100;
+  position:fixed;bottom:90px;right:18px;z-index:6100;
   width:54px;height:54px;border-radius:50%;border:none;
   background:linear-gradient(135deg,#7c3aed,#4f46e5);
   color:#fff;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 18px rgba(124,58,237,.5);
-  transition:transform .18s,box-shadow .18s;
+  transition:transform .18s,box-shadow .18s,opacity .2s;
   -webkit-tap-highlight-color:transparent;
   outline:none;
 }
@@ -4751,6 +4751,8 @@ function hideTyping(){
 window.aiOpen = function(){
   var bd  = document.getElementById('aiBackdrop');
   var box = document.getElementById('aiBox');
+  var fab = document.getElementById('aiFab');
+  if(fab) fab.style.display = 'none';
   bd.classList.add('show');
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
@@ -4770,9 +4772,13 @@ window.aiOpen = function(){
 window.aiClose = function(){
   var bd  = document.getElementById('aiBackdrop');
   var box = document.getElementById('aiBox');
+  var fab = document.getElementById('aiFab');
   bd.classList.remove('visible');
   box.classList.remove('open');
-  setTimeout(function(){ bd.classList.remove('show'); }, 280);
+  setTimeout(function(){
+    bd.classList.remove('show');
+    if(fab) fab.style.display = '';
+  }, 280);
 };
 
 /* ── Send ── */
@@ -4868,16 +4874,17 @@ function getQU(raw){
   return null;
 }
 
-/* ── strip command words to get product name ── */
+/* ── strip command words + units + numbers to get product name ── */
 function getName(raw){
-  return n(raw)
+  return n(b2e(raw))
     .replace(/\d+(?:\.\d+)?/g,' ')
     .replace(/কেজি|কেজী|গ্রাম|লিটার|পিস|পিচ|ডজন|প্যাকেট/g,' ')
-    .replace(/kg|gram|gm|litre|liter|pcs|piece|dozen|dz|packet|pkt|pk/gi,' ')
+    .replace(/\b(kg|kilo|gram|gm|g|litre|liter|ml|l|pcs|piece|pieces|dozen|dz|packet|pkt|pk)\b/gi,' ')
     .replace(/দাম|price|মূল্য|rate|মোট|total|কত|হিসাব|বিলে|যোগ|add|কিনতে|চাই|বানাও|তৈরি|create|make|দাও|রাখো/gi,' ')
     .replace(/শর্ট লিস্ট|শর্টলিস্ট|shortlist|short list/gi,' ')
     .replace(/ইনভয়েস|invoice|বিল|bill/gi,' ')
-    .replace(/এর|র|এর জন্য|কে|এর দাম|দেখাও|বলো|\?|।|,/g,' ')
+    .replace(/\b(এর|র|এর জন্য|কে|এর দাম|দেখাও|বলো)\b/g,' ')
+    .replace(/[\?।,]/g,' ')
     .replace(/\s+/g,' ').trim();
 }
 
@@ -5058,15 +5065,64 @@ function doAddBill(raw){
   return '❌ বিল সিস্টেম প্রস্তুত নেই।';
 }
 
+/* ── Unit / junk token detection ── */
+var UNIT_RE_SL = /^(kg|kilo|g|gm|gram|l|litre|liter|ml|pcs|piece|pieces|dozen|dz|packet|pkt|pk|\u099f\u09bf|\u0995\u09c7\u099c\u09bf|\u0995\u09c7\u099c\u09c0|\u0997\u09cd\u09b0\u09be\u09ae|\u09b2\u09bf\u099f\u09be\u09b0|\u09aa\u09bf\u09b8|\u09aa\u09bf\u099a|\u09a1\u099c\u09a8|\u09aa\u09cd\u09af\u09be\u0995\u09c7\u099f|\u09ae\u09bf\u09b2\u09bf)$/i;
+var CMD_RE_SL  = /^(\u09b6\u09b0\u09cd\u099f|\u09b2\u09bf\u09b8\u09cd\u099f|shortlist|short|list|sl|\u09ac\u09be\u09a8\u09be\u0993|\u09a4\u09c8\u09b0\u09bf|create|make|add|\u09a6\u09be\u0993|\u0995\u09b0\u09cb|\u09af\u09cb\u0997|\u0995\u09b0\u09c1\u09a8|\u098f\u09ac\u0982|and|or|\u09ac\u09be|the|a|an|of|for)$/i;
+
+/* ── Split fused token like "2kg" → ["2","kg"] ── */
+function splitFused(tok){
+  var m = tok.match(/^(\d+(?:\.\d+)?)(kg|kilo|g|gm|gram|l|litre|liter|ml|pcs|piece|dozen|dz|packet|pkt|pk)$/i);
+  return m ? [m[1], m[2]] : [tok];
+}
+function isSkipSL(tok){
+  if(!tok) return true;
+  if(/^\d+(\.\d+)?$/.test(tok)) return true;
+  if(UNIT_RE_SL.test(tok)) return true;
+  if(CMD_RE_SL.test(tok)) return true;
+  return false;
+}
+
+/* ── Smart multi-product parser ──────────────────────────────
+   Input:  "alu muri 2kg chini 1kg rosun"
+   Output: ["alu","muri","chini","rosun"]
+   Rules:
+     • Comma → each segment = one product name (nums/units stripped inside)
+     • No comma → each non-skip word token = individual product
+     • Fused tokens like "2kg" are split into ["2","kg"] then both skipped
+─────────────────────────────────────────────────────────── */
+function parseProductList(raw){
+  var cleaned = b2e(n(raw))
+    .replace(/\u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f|\u09b6\u09b0\u09cd\u099f\u09b2\u09bf\u09b8\u09cd\u099f|shortlist|short list|\u0995\u09c7\u09a8\u09be\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be/gi,' ')
+    .replace(/\u09ac\u09be\u09a8\u09be\u0993|\u09a4\u09c8\u09b0\u09bf|create|make|\u09af\u09cb\u0997 \u0995\u09b0\u09cb|add|\u09a6\u09be\u0993|\u0995\u09b0\u09cb/gi,' ');
+
+  var hasComma = /[,\u060c]/.test(cleaned);
+  var names = [];
+
+  if(hasComma){
+    cleaned.split(/[,\u060c]+/).map(function(s){ return s.trim(); }).filter(Boolean)
+    .forEach(function(seg){
+      var buf = [];
+      seg.split(/\s+/).forEach(function(tok){
+        tok = tok.replace(/[?\u0964:]/g,'').trim();
+        splitFused(tok).forEach(function(t){ if(!isSkipSL(t)) buf.push(t); });
+      });
+      if(buf.length) names.push(buf.join(' '));
+    });
+  } else {
+    var allToks = [];
+    cleaned.split(/\s+/).forEach(function(tok){
+      tok = tok.replace(/[?\u0964:,]/g,'').trim();
+      if(tok) splitFused(tok).forEach(function(t){ allToks.push(t); });
+    });
+    allToks.forEach(function(tok){ if(!isSkipSL(tok)) names.push(tok); });
+  }
+  return names;
+}
+
 function doMkSL(raw){
-  var t = n(raw)
-    .replace(/শর্ট লিস্ট|শর্টলিস্ট|shortlist|short list|কেনার তালিকা/gi,' ')
-    .replace(/বানাও|তৈরি|create|make|যোগ করো|add|দাও|করো/gi,' ')
-    .replace(/[:,।]/g,' ').trim();
-  var items = t.split(/[,،\s]+/).map(function(s){ return s.trim(); })
-               .filter(function(s){ return s.length>1; });
+  var items = parseProductList(raw);
   if(!items.length) return '❌ পণ্যের নাম দিন।<br>'
-    +'<small>যেমন: "শর্ট লিস্ট বানাও: আলু, ডাল, তেল"</small>';
+    +'<small>যেমন: "শর্ট লিস্ট বানাও: আলু, ডাল, তেল"<br>অথবা: "শর্ট লিস্ট: আলু মুড়ি 2kg চিনি রসুন"</small>';
   if(typeof shortList === 'undefined') return '❌ শর্ট লিস্ট সিস্টেম প্রস্তুত নেই।';
   items.forEach(function(name, i){
     shortList.unshift({
