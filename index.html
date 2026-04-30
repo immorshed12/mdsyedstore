@@ -2145,6 +2145,7 @@ function hideFabOnMobile(){}
 function showFabOnMobile(){}
 
 function openBillPage(){
+  toggleAIFab(false);
   document.getElementById('billPageSection').classList.add('open');
   document.getElementById('navCardBill').classList.add('fp-open');
   // bill-box must have .show for its internal tab logic to work
@@ -2157,6 +2158,7 @@ function openBillPage(){
   document.body.style.overflow = 'hidden';
 }
 function closeBillPage(){
+  toggleAIFab(true);
   document.getElementById('billPageSection').classList.remove('open');
   document.getElementById('navCardBill').classList.remove('fp-open');
   document.body.style.overflow = '';
@@ -3411,6 +3413,7 @@ function saveShortList(){
 }
 
 function openSLPage(){
+  toggleAIFab(false);
   document.getElementById('slPageSection').classList.add('open');
   document.getElementById('navCardSL').classList.add('fp-open');
   document.getElementById('shortListBox').classList.add('show');
@@ -3427,6 +3430,7 @@ function openSLPage(){
   _updateSLPageBadge();
 }
 function closeSLPage(){
+  toggleAIFab(true);
   document.getElementById('slPageSection').classList.remove('open');
   document.getElementById('navCardSL').classList.remove('fp-open');
   document.body.style.overflow = '';
@@ -3913,6 +3917,14 @@ window.addEventListener('pageshow', function(e){
   renderData();
   updateStats();
 });
+/* ── AI FAB visibility controller ──
+   Call toggleAIFab(true)  on home screen
+   Call toggleAIFab(false) on any full-page view  */
+function toggleAIFab(show){
+  var fab = document.getElementById('aiFab');
+  if(fab) fab.style.display = show ? '' : 'none';
+}
+
 </script>
 
 <!-- CALCULATOR MODAL v17 -->
@@ -4111,8 +4123,8 @@ function calc(s){
     return isFinite(r)?parseFloat(r.toPrecision(10)).toString():"Error";
   }catch(e){return"Error";}
 }
-window.openCalcModal=function(){ex="";cur="0";ev=false;ui();var el=document.getElementById("cmOverlay");el.style.display="flex";requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add("open");});});};
-window.closeCM=function(){var el=document.getElementById("cmOverlay");el.classList.remove("open");setTimeout(function(){if(!el.classList.contains("open"))el.style.display="";},260);};
+window.openCalcModal=function(){ex="";cur="0";ev=false;ui();if(typeof toggleAIFab==="function")toggleAIFab(false);var el=document.getElementById("cmOverlay");el.style.display="flex";requestAnimationFrame(function(){requestAnimationFrame(function(){el.classList.add("open");});});};
+window.closeCM=function(){var el=document.getElementById("cmOverlay");el.classList.remove("open");setTimeout(function(){if(!el.classList.contains("open")){el.style.display="";if(typeof toggleAIFab==="function")toggleAIFab(true);}},260);};
 window.ca=function(k){
   if(k==="C"){ex="";cur="0";ev=false;}
   else if(k==="DEL"){if(ev){ex="";cur="0";ev=false;}else{cur=cur.length>1?cur.slice(0,-1):"0";}}
@@ -4845,326 +4857,347 @@ window.aiMic = function(){
 };
 
 /* ════════════════════════════════════════════════════════════
-   INTELLIGENCE ENGINE
-════════════════════════════════════════════════════════════ */
+   INTELLIGENCE ENGINE v3
+   ════════════════════════════════════════════════════════════ */
 
-/* ── unit aliases ── */
-var UNITS = {
-  'কেজি':'kg','কেজী':'kg','kg':'kg','কেজী':'kg',
-  'গ্রাম':'g','gram':'g','gm':'g','g':'g',
-  'লিটার':'l','litre':'l','liter':'l','l':'l',
-  'পিস':'pcs','piece':'pcs','pcs':'pcs','পিচ':'pcs',
-  'ডজন':'dozen','dozen':'dozen','dz':'dozen',
-  'প্যাকেট':'pkt','packet':'pkt','pkt':'pkt','pk':'pkt'
-};
-function parseUnit(w){
-  if(!w) return null;
-  var lw = n(w);
-  for(var k in UNITS){ if(lw===n(k)) return UNITS[k]; }
-  return null;
+/* ── safe number (NEVER NaN) ── */
+function safeNum(v){ var x=parseFloat(String(v||'').replace(/[^\d.]/g,'')); return isNaN(x)?0:x; }
+
+/* ── convert qty to base unit (g→kg, ml→l) ── */
+function toBase(qty,unit){
+  var u=(unit||'').toLowerCase();
+  if(u==='g'||u==='gm'||u==='gram') return qty/1000;
+  if(u==='ml') return qty/1000;
+  return qty;
 }
 
-/* ── extract qty + unit from raw text ── */
-function getQU(raw){
-  var t = b2e(n(raw));
-  var m = t.match(/(\d+(?:\.\d+)?)\s*(কেজি|কেজী|kg|গ্রাম|gram|gm|লিটার|litre|liter|পিস|piece|pcs|পিচ|ডজন|dozen|dz|প্যাকেট|packet|pkt|pk)?/i);
-  if(m && parseFloat(m[1])){
-    return { qty: parseFloat(m[1]), unit: parseUnit(m[2]) || 'kg' };
-  }
-  return null;
+/* ── unit word detection ── */
+var UNIT_WORDS_RE=/^(kg|kilo|g|gm|gram|l|litre|liter|ml|pcs|piece|pieces|dozen|dz|packet|pkt|pk|\u0995\u09c7\u099c\u09bf|\u0995\u09c7\u099c\u09c0|\u0997\u09cd\u09b0\u09be\u09ae|\u09b2\u09bf\u099f\u09be\u09b0|\u09aa\u09bf\u09b8|\u09aa\u09bf\u099a|\u09a1\u099c\u09a8|\u09aa\u09cd\u09af\u09be\u0995\u09c7\u099f|\u09ae\u09bf\u09b2\u09bf)$/i;
+var STOP_RE=/^(\u098f\u09b0|\u09b0|\u098f\u09ac\u0982|and|or|\u09ac\u09be|the|a|an|of|for|\u09ae\u09cb\u099f|total|\u09b9\u09bf\u09b8\u09be\u09ac|\u0995\u09a4|price|\u09a6\u09be\u09ae)$/i;
+
+function normUnit(u){
+  u=(u||'').toLowerCase();
+  if(u==='\u0995\u09c7\u099c\u09bf'||u==='\u0995\u09c7\u099c\u09c0'||u==='kilo') return 'kg';
+  if(u==='\u0997\u09cd\u09b0\u09be\u09ae'||u==='gram'||u==='gm') return 'g';
+  if(u==='\u09b2\u09bf\u099f\u09be\u09b0'||u==='liter') return 'l';
+  if(u==='\u09aa\u09bf\u09b8'||u==='\u09aa\u09bf\u099a'||u==='piece'||u==='pieces') return 'pcs';
+  if(u==='\u09a1\u099c\u09a8'||u==='dz') return 'dozen';
+  if(u==='\u09aa\u09cd\u09af\u09be\u0995\u09c7\u099f'||u==='packet'||u==='pk'||u==='pkt') return 'pkt';
+  if(u==='\u09ae\u09bf\u09b2\u09bf'||u==='ml') return 'ml';
+  return u;
 }
 
-/* ── strip command words + units + numbers to get product name ── */
-function getName(raw){
-  return n(b2e(raw))
-    .replace(/\d+(?:\.\d+)?/g,' ')
-    .replace(/কেজি|কেজী|গ্রাম|লিটার|পিস|পিচ|ডজন|প্যাকেট/g,' ')
-    .replace(/\b(kg|kilo|gram|gm|g|litre|liter|ml|l|pcs|piece|pieces|dozen|dz|packet|pkt|pk)\b/gi,' ')
-    .replace(/দাম|price|মূল্য|rate|মোট|total|কত|হিসাব|বিলে|যোগ|add|কিনতে|চাই|বানাও|তৈরি|create|make|দাও|রাখো/gi,' ')
-    .replace(/শর্ট লিস্ট|শর্টলিস্ট|shortlist|short list/gi,' ')
-    .replace(/ইনভয়েস|invoice|বিল|bill/gi,' ')
-    .replace(/\b(এর|র|এর জন্য|কে|এর দাম|দেখাও|বলো)\b/g,' ')
-    .replace(/[\?।,]/g,' ')
-    .replace(/\s+/g,' ').trim();
+/* ── split fused token "2kg" → {qty:2, unit:'kg'} ── */
+function splitFusedTok(tok){
+  var m=tok.match(/^(\d+(?:\.\d+)?)(kg|kilo|g|gm|gram|l|litre|liter|ml|pcs|piece|dozen|dz|packet|pkt|pk)$/i);
+  return m?{qty:parseFloat(m[1]),unit:normUnit(m[2])}:null;
 }
 
-/* ── fuzzy product search ── */
+/* ── MULTI-PRODUCT PARSER ──
+   "2kg muri 1kg chini 500g ada 1pcs biscuit"
+   → [{qty:2,unit:'kg',name:'muri'}, ...]
+   Walk tokens: number/fused → flush & new; unit → refine; else → name
+─────────────────────────────────────────────────────────── */
+function parseMultiProd(raw){
+  var cleaned=b2e(n(raw)).replace(/[:,\u0964]/g,' ');
+  var tokens=cleaned.split(/[\s,\u060c]+/).filter(Boolean);
+  var segs=[],cur=null;
+  function flush(){ if(cur&&cur.buf.length){ segs.push({qty:cur.qty,unit:cur.unit,name:cur.buf.join(' ')}); } cur=null; }
+  tokens.forEach(function(tok){
+    var fused=splitFusedTok(tok);
+    if(fused){ flush(); cur={qty:fused.qty,unit:fused.unit,buf:[]}; return; }
+    if(/^\d+(\.\d+)?$/.test(tok)){ flush(); cur={qty:parseFloat(tok),unit:'kg',buf:[]}; return; }
+    if(UNIT_WORDS_RE.test(tok)&&cur&&cur.buf.length===0){ cur.unit=normUnit(tok); return; }
+    if(STOP_RE.test(tok)) return;
+    if(!cur) cur={qty:1,unit:'pcs',buf:[]};
+    cur.buf.push(tok);
+  });
+  flush();
+  return segs;
+}
+
+/* ── fuzzy product lookup ── */
 function findP(q){
-  var prods = window.products || [];
-  if(!q || !prods.length) return null;
-  var nq = n(q);
-  // exact
-  var h = prods.filter(function(p){ return n(p.name)===nq; })[0];
-  if(h) return h;
-  // either contains the other
-  h = prods.filter(function(p){
-    var pn=n(p.name);
-    return pn.indexOf(nq)>-1 || nq.indexOf(pn)>-1;
-  })[0];
-  if(h) return h;
-  // word-by-word
-  var words = nq.split(' ').filter(function(w){ return w.length>1; });
+  var prods=window.products||[];
+  if(!q||!prods.length) return null;
+  var nq=n(q);
+  var h=prods.filter(function(p){return n(p.name)===nq;})[0]; if(h) return h;
+  h=prods.filter(function(p){var pn=n(p.name);return pn.indexOf(nq)>-1||nq.indexOf(pn)>-1;})[0]; if(h) return h;
+  var words=nq.split(' ').filter(function(w){return w.length>1;});
   for(var i=0;i<words.length;i++){
-    h = prods.filter(function(p){ return n(p.name).indexOf(words[i])>-1; })[0];
+    h=prods.filter(function(p){return n(p.name).indexOf(words[i])>-1;})[0];
     if(h) return h;
   }
   return null;
 }
 
-/* ── intent detection ── */
-function intent(raw){
-  var t = n(raw);
-  if(/সাহায্য|help|কী করতে পারো|কিভাবে ব্যবহার/.test(t)) return 'help';
-  if(/সব পণ্য|all product|পণ্যের তালিকা|product list|পণ্য লিস্ট/.test(t)) return 'all_prod';
-  if(/আজকের বিক্রি|today.*sale|আজ.*বিক্রি|বিক্রির হিসাব|মোট বিক্রি/.test(t)) return 'sales';
-  if(/বাকি তালিকা|due list|সব বাকি|কার কার বাকি|due.*list/.test(t)) return 'due_list';
-  if(/বিল খোলো|open bill|bill খোল|বিল স্লিপ খোল/.test(t)) return 'open_bill';
-  if(/শর্ট লিস্ট দেখাও|shortlist দেখ|শর্টলিস্ট দেখ|show shortlist|শর্ট লিস্ট খোল/.test(t)) return 'show_sl';
-  // create shortlist: must have create + list keyword
-  if(/শর্ট লিস্ট|শর্টলিস্ট|shortlist|short list|কেনার তালিকা/.test(t)
-     && /বানাও|তৈরি|create|make|যোগ|add|দাও|করো/.test(t)) return 'mk_sl';
-  // add to bill
-  if(/বিলে যোগ|বিলে রাখো|বিলে দাও|bill.*add|add.*bill|bill এ যোগ/.test(t)) return 'add_bill';
-  // customer due
-  if(/বাকি|due|পাওনা/.test(t) && !/তালিকা|list/.test(t)) return 'cust_due';
-  // price (no total calc)
-  if(/দাম|price|মূল্য|rate/.test(t) && !/মোট|total|কত হবে|হিসাব/.test(t)) return 'price';
-  // calc / total
-  if(/মোট|total|কত হবে|কত টাকা|হিসাব/.test(t) || /\d/.test(b2e(t))) return 'calc';
-  return 'unknown';
-}
-
-/* ── get invoices from best source ── */
-function getInvs(){
-  if(window._fbInvoices && window._fbInvoices.length) return window._fbInvoices;
-  try{ return JSON.parse(localStorage.getItem('savedInvoices')||'[]'); }catch(e){ return []; }
-}
-
-/* ── HANDLERS ── */
-function doHelp(){
-  return '<b>আমি যা করতে পারি:</b><br>'
-    +'📦 <b>দাম জানুন:</b> "আলু দাম?" | "alu price?"<br>'
-    +'🔢 <b>হিসাব:</b> "5kg আলু মোট?" | "3 বিস্কুট কত টাকা?"<br>'
-    +'🧾 <b>বিলে যোগ:</b> "বিলে যোগ করো 2kg চিনি"<br>'
-    +'📝 <b>শর্ট লিস্ট:</b> "শর্ট লিস্ট বানাও: আলু, ডাল, তেল"<br>'
-    +'💰 <b>বাকি দেখুন:</b> "কাশেম বাকি?" | "রহিম due?"<br>'
-    +'📋 <b>সব বাকি:</b> "বাকি তালিকা"<br>'
-    +'📊 <b>বিক্রি:</b> "আজকের বিক্রি"<br>'
-    +'📦 <b>সব পণ্য:</b> "সব পণ্য দেখাও"';
-}
-
-function doAllProd(){
-  var prods = window.products || [];
-  if(!prods.length) return '📦 কোনো পণ্য নেই। প্রথমে পণ্য যোগ করুন।';
-  var rows = prods.map(function(p){
-    return '• <b>'+p.name+'</b> — ৳'+p.price+' / '+p.unit;
-  }).join('<br>');
-  return '<b>📦 সব পণ্য ('+prods.length+'টি):</b><br>'+rows;
-}
-
-function doSales(){
-  var invs = getInvs();
-  if(!invs.length) return '💰 কোনো বিক্রির তথ্য নেই।';
-  var today = new Date().toDateString();
-  var ti = invs.filter(function(i){
-    try{ return new Date(i.date).toDateString()===today; }catch(e){ return false; }
-  });
-  if(!ti.length) return '💰 আজ কোনো বিক্রি হয়নি।<br>মোট সংরক্ষিত: '+invs.length+'টি বিল';
-  var tot  = ti.reduce(function(s,i){ return s+(Number(i.total)||0); },0);
-  var paid = ti.reduce(function(s,i){ return s+(Number(i.paid)||0); },0);
-  var due  = ti.reduce(function(s,i){ return s+(Number(i.due)||0); },0);
-  return '<b>💰 আজকের বিক্রি ('+ti.length+'টি বিল):</b><br>'
-    +'মোট: <b>৳'+tot.toFixed(2)+'</b><br>'
-    +'পরিশোধ: ৳'+paid.toFixed(2)+'<br>'
-    +'বাকি: ৳'+due.toFixed(2);
-}
-
-function doDueList(){
-  var invs = getInvs();
-  var dues = invs.filter(function(i){ return Number(i.due)>0; });
-  if(!dues.length) return '✅ কারো বাকি নেই!';
-  var rows = dues.slice(0,12).map(function(i){
-    return '• <b>'+(i.customer||'অজানা')+'</b>: ৳'+Number(i.due).toFixed(2);
-  }).join('<br>');
-  var tot = dues.reduce(function(s,i){ return s+(Number(i.due)||0); },0);
-  return '<b>📋 বাকি তালিকা ('+dues.length+'জন):</b><br>'+rows
-    +'<br><br>মোট বাকি: <b>৳'+tot.toFixed(2)+'</b>';
-}
-
-function doCustDue(raw){
-  var invs = getInvs();
-  var q = n(raw)
-    .replace(/বাকি|due|পাওনা|কত|টাকা|\?|।/g,' ')
+/* ── single product name extractor ── */
+function getName(raw){
+  return n(b2e(raw))
+    .replace(/\d+(?:\.\d+)?/g,' ')
+    .replace(/\u0995\u09c7\u099c\u09bf|\u0995\u09c7\u099c\u09c0|\u0997\u09cd\u09b0\u09be\u09ae|\u09b2\u09bf\u099f\u09be\u09b0|\u09aa\u09bf\u09b8|\u09aa\u09bf\u099a|\u09a1\u099c\u09a8|\u09aa\u09cd\u09af\u09be\u0995\u09c7\u099f|\u09ae\u09bf\u09b2\u09bf/g,' ')
+    .replace(/\b(kg|kilo|gram|gm|g|litre|liter|ml|l|pcs|piece|pieces|dozen|dz|packet|pkt|pk)\b/gi,' ')
+    .replace(/\u09a6\u09be\u09ae|price|\u09ae\u09c2\u09b2\u09cd\u09af|rate|\u09ae\u09cb\u099f|total|\u0995\u09a4|\u09b9\u09bf\u09b8\u09be\u09ac|\u09ac\u09bf\u09b2\u09c7|\u09af\u09cb\u0997|add|\u09ac\u09be\u09a8\u09be\u0993|\u09a4\u09c8\u09b0\u09bf|create|make|\u09a6\u09be\u0993|\u09b0\u09be\u0996\u09cb/gi,' ')
+    .replace(/\u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f|\u09b6\u09b0\u09cd\u099f\u09b2\u09bf\u09b8\u09cd\u099f|shortlist|short list/gi,' ')
+    .replace(/\u0987\u09a8\u09ad\u09af\u09bc\u09c7\u09b8|invoice|\u09ac\u09bf\u09b2|bill/gi,' ')
+    .replace(/[?\u0964,.]/g,' ')
     .replace(/\s+/g,' ').trim();
-  if(!q) return doDueList();
-  var ci = invs.filter(function(i){ return i.customer && n(i.customer).indexOf(q)>-1; });
-  if(!ci.length){
-    // try individual words
-    var ws = q.split(' ').filter(function(w){ return w.length>1; });
-    for(var i=0;i<ws.length;i++){
-      var ww=ws[i];
-      ci = invs.filter(function(inv){ return inv.customer && n(inv.customer).indexOf(ww)>-1; });
-      if(ci.length) break;
-    }
-  }
-  if(!ci.length) return '📋 "<b>'+q+'</b>" নামে কোনো কাস্টমার পাওয়া যায়নি।';
-  var due  = ci.reduce(function(s,i){ return s+(Number(i.due)||0); },0);
-  var paid = ci.reduce(function(s,i){ return s+(Number(i.paid)||0); },0);
-  var tot  = ci.reduce(function(s,i){ return s+(Number(i.total)||0); },0);
-  return '<b>📋 '+ci[0].customer+':</b><br>'
-    +'মোট কেনা: ৳'+tot.toFixed(2)+'<br>'
-    +'পরিশোধ: ৳'+paid.toFixed(2)+'<br>'
-    +'বাকি: <b>৳'+due.toFixed(2)+'</b><br>'
-    +'বিল সংখ্যা: '+ci.length+'টি';
 }
 
-function doPrice(raw){
-  var nm = getName(raw);
-  var p = findP(nm);
-  if(!p) return '❌ "<b>'+nm+'</b>" পণ্যটি পাওয়া যায়নি।<br>'
-    +'<small>সব পণ্য দেখতে লিখুন: <i>সব পণ্য</i></small>';
-  return '💰 <b>'+p.name+'</b>: ৳'+p.price+' / '+p.unit;
+/* ── calculate segments (no NaN guarantee) ── */
+function calcSegs(segs){
+  var lines=[],notFound=[];
+  segs.forEach(function(seg){
+    var p=findP(seg.name);
+    if(!p){ notFound.push(seg.name); return; }
+    var price=safeNum(p.price);
+    var baseQty=toBase(seg.qty,seg.unit);
+    var lineTotal=Math.round(baseQty*price*100)/100;
+    if(!isFinite(lineTotal)) lineTotal=0;
+    lines.push({name:p.name,rawQty:seg.qty,unit:seg.unit,price:price,lineTotal:lineTotal});
+  });
+  var grand=0; lines.forEach(function(l){grand+=l.lineTotal;});
+  grand=Math.round(grand*100)/100;
+  return {lines:lines,notFound:notFound,grand:grand};
 }
 
-function doCalc(raw){
-  var nm = getName(raw);
-  var qu = getQU(b2e(n(raw)));
-  var p  = findP(nm);
-  if(!p) return '❌ পণ্য পাওয়া যায়নি: "<b>'+nm+'</b>"<br>'
-    +'<small>সব পণ্য: <i>সব পণ্য দেখাও</i></small>';
-  if(!qu || !qu.qty){
-    return '💰 <b>'+p.name+'</b>: ৳'+p.price+' / '+p.unit+'<br>'
-      +'<small>হিসাবের জন্য পরিমাণ দিন — যেমন: "5kg '+p.name+' মোট?"</small>';
-  }
-  var tot = qu.qty * parseFloat(p.price||0);
-  return '🔢 <b>'+qu.qty+' '+qu.unit+' '+p.name+':</b><br>'
-    +'একক দাম: ৳'+p.price+' / '+p.unit+'<br>'
-    +'মোট: <b>৳'+tot.toFixed(2)+'</b>';
+/* ── format calc output ── */
+function fmtCalc(res){
+  if(!res.lines.length&&!res.notFound.length) return '\u274c \u0995\u09cb\u09a8\u09cb \u09aa\u09a3\u09cd\u09af \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf\u0964';
+  var html='<b>\ud83d\udd22 \u09b9\u09bf\u09b8\u09be\u09ac:</b><br>';
+  res.lines.forEach(function(l){
+    var isW=(l.unit==='kg'||l.unit==='g'||l.unit==='l'||l.unit==='ml');
+    var dq=isW?l.rawQty+l.unit:l.rawQty+(l.unit&&l.unit!=='pcs'?' '+l.unit:'');
+    html+='&bull; <b>'+l.name+'</b> ('+dq+') = \u09f3'+l.lineTotal.toFixed(2)+'<br>';
+  });
+  if(res.notFound.length) html+='<small style="color:#ef4444">\u274c \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf: '+res.notFound.join(', ')+'</small><br>';
+  if(res.lines.length>1||res.notFound.length) html+='<br>\u09b8\u09b0\u09cd\u09ac\u09ae\u09cb\u099f: <b style="font-size:15px">\u09f3'+res.grand.toFixed(2)+'</b>';
+  return html;
 }
 
-function doAddBill(raw){
-  var clean = n(raw).replace(/বিলে যোগ|বিলে রাখো|বিলে দাও|bill এ যোগ|add.*bill|bill.*add/gi,' ');
-  var nm = getName(clean);
-  var p  = findP(nm);
-  if(!p) return '❌ পণ্য পাওয়া যায়নি: "<b>'+nm+'</b>"';
-  var qu  = getQU(b2e(n(raw)));
-  var qty = qu ? qu.qty : 1;
-  var unit= qu ? qu.unit : (p.unit||'pcs');
-  var tot = qty * parseFloat(p.price||0);
-  if(typeof billCart !== 'undefined'){
-    billCart.push({
-      name:p.name, qty:qty, total:tot,
-      unitPrice:parseFloat(p.price||0), unit:unit, mode:'weight'
-    });
-    if(typeof renderBill==='function') renderBill();
-    if(typeof updateFab==='function') updateFab(billCart.length);
-    return '✅ <b>'+qty+' '+unit+' '+p.name+'</b> বিলে যোগ হয়েছে!<br>'
-      +'মূল্য: ৳'+tot.toFixed(2)+'<br>'
-      +'<small>বিল স্লিপ কার্ডে চাপুন।</small>';
-  }
-  return '❌ বিল সিস্টেম প্রস্তুত নেই।';
-}
+/* ── context memory (add/remove/total/clear) ── */
+var _ctx=[];
+function ctxTotal(){ var g=0; _ctx.forEach(function(l){g+=l.lineTotal;}); return Math.round(g*100)/100; }
 
-/* ── Unit / junk token detection ── */
-var UNIT_RE_SL = /^(kg|kilo|g|gm|gram|l|litre|liter|ml|pcs|piece|pieces|dozen|dz|packet|pkt|pk|\u099f\u09bf|\u0995\u09c7\u099c\u09bf|\u0995\u09c7\u099c\u09c0|\u0997\u09cd\u09b0\u09be\u09ae|\u09b2\u09bf\u099f\u09be\u09b0|\u09aa\u09bf\u09b8|\u09aa\u09bf\u099a|\u09a1\u099c\u09a8|\u09aa\u09cd\u09af\u09be\u0995\u09c7\u099f|\u09ae\u09bf\u09b2\u09bf)$/i;
-var CMD_RE_SL  = /^(\u09b6\u09b0\u09cd\u099f|\u09b2\u09bf\u09b8\u09cd\u099f|shortlist|short|list|sl|\u09ac\u09be\u09a8\u09be\u0993|\u09a4\u09c8\u09b0\u09bf|create|make|add|\u09a6\u09be\u0993|\u0995\u09b0\u09cb|\u09af\u09cb\u0997|\u0995\u09b0\u09c1\u09a8|\u098f\u09ac\u0982|and|or|\u09ac\u09be|the|a|an|of|for)$/i;
-
-/* ── Split fused token like "2kg" → ["2","kg"] ── */
-function splitFused(tok){
-  var m = tok.match(/^(\d+(?:\.\d+)?)(kg|kilo|g|gm|gram|l|litre|liter|ml|pcs|piece|dozen|dz|packet|pkt|pk)$/i);
-  return m ? [m[1], m[2]] : [tok];
-}
-function isSkipSL(tok){
-  if(!tok) return true;
-  if(/^\d+(\.\d+)?$/.test(tok)) return true;
-  if(UNIT_RE_SL.test(tok)) return true;
-  if(CMD_RE_SL.test(tok)) return true;
-  return false;
-}
-
-/* ── Smart multi-product parser ──────────────────────────────
-   Input:  "alu muri 2kg chini 1kg rosun"
-   Output: ["alu","muri","chini","rosun"]
-   Rules:
-     • Comma → each segment = one product name (nums/units stripped inside)
-     • No comma → each non-skip word token = individual product
-     • Fused tokens like "2kg" are split into ["2","kg"] then both skipped
-─────────────────────────────────────────────────────────── */
+/* ── shortlist token utils ── */
+var UNIT_RE_SL=/^(kg|kilo|g|gm|gram|l|litre|liter|ml|pcs|piece|pieces|dozen|dz|packet|pkt|pk|\u099f\u09bf|\u0995\u09c7\u099c\u09bf|\u0995\u09c7\u099c\u09c0|\u0997\u09cd\u09b0\u09be\u09ae|\u09b2\u09bf\u099f\u09be\u09b0|\u09aa\u09bf\u09b8|\u09aa\u09bf\u099a|\u09a1\u099c\u09a8|\u09aa\u09cd\u09af\u09be\u0995\u09c7\u099f|\u09ae\u09bf\u09b2\u09bf)$/i;
+var CMD_RE_SL=/^(\u09b6\u09b0\u09cd\u099f|\u09b2\u09bf\u09b8\u09cd\u099f|shortlist|short|list|sl|\u09ac\u09be\u09a8\u09be\u0993|\u09a4\u09c8\u09b0\u09bf|create|make|add|\u09a6\u09be\u0993|\u0995\u09b0\u09cb|\u09af\u09cb\u0997|\u0995\u09b0\u09c1\u09a8|\u098f\u09ac\u0982|and|or|\u09ac\u09be|the|a|an|of|for)$/i;
+function isSkipSL(t){ return !t||/^\d+(\.\d+)?$/.test(t)||UNIT_RE_SL.test(t)||CMD_RE_SL.test(t); }
 function parseProductList(raw){
-  var cleaned = b2e(n(raw))
+  var cleaned=b2e(n(raw))
     .replace(/\u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f|\u09b6\u09b0\u09cd\u099f\u09b2\u09bf\u09b8\u09cd\u099f|shortlist|short list|\u0995\u09c7\u09a8\u09be\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be/gi,' ')
     .replace(/\u09ac\u09be\u09a8\u09be\u0993|\u09a4\u09c8\u09b0\u09bf|create|make|\u09af\u09cb\u0997 \u0995\u09b0\u09cb|add|\u09a6\u09be\u0993|\u0995\u09b0\u09cb/gi,' ');
-
-  var hasComma = /[,\u060c]/.test(cleaned);
-  var names = [];
-
+  var hasComma=/[,\u060c]/.test(cleaned),names=[];
   if(hasComma){
-    cleaned.split(/[,\u060c]+/).map(function(s){ return s.trim(); }).filter(Boolean)
-    .forEach(function(seg){
-      var buf = [];
+    cleaned.split(/[,\u060c]+/).map(function(s){return s.trim();}).filter(Boolean).forEach(function(seg){
+      var buf=[];
       seg.split(/\s+/).forEach(function(tok){
-        tok = tok.replace(/[?\u0964:]/g,'').trim();
-        splitFused(tok).forEach(function(t){ if(!isSkipSL(t)) buf.push(t); });
+        tok=tok.replace(/[?\u0964:]/g,'').trim();
+        var f=splitFusedTok(tok);
+        (f?[String(f.qty),f.unit]:[tok]).forEach(function(t){if(!isSkipSL(t))buf.push(t);});
       });
       if(buf.length) names.push(buf.join(' '));
     });
   } else {
-    var allToks = [];
+    var toks=[];
     cleaned.split(/\s+/).forEach(function(tok){
-      tok = tok.replace(/[?\u0964:,]/g,'').trim();
-      if(tok) splitFused(tok).forEach(function(t){ allToks.push(t); });
+      tok=tok.replace(/[?\u0964:,]/g,'').trim();
+      if(tok){var f=splitFusedTok(tok);(f?[String(f.qty),f.unit]:[tok]).forEach(function(t){toks.push(t);});}
     });
-    allToks.forEach(function(tok){ if(!isSkipSL(tok)) names.push(tok); });
+    toks.forEach(function(t){if(!isSkipSL(t))names.push(t);});
   }
   return names;
 }
 
-function doMkSL(raw){
-  var items = parseProductList(raw);
-  if(!items.length) return '❌ পণ্যের নাম দিন।<br>'
-    +'<small>যেমন: "শর্ট লিস্ট বানাও: আলু, ডাল, তেল"<br>অথবা: "শর্ট লিস্ট: আলু মুড়ি 2kg চিনি রসুন"</small>';
-  if(typeof shortList === 'undefined') return '❌ শর্ট লিস্ট সিস্টেম প্রস্তুত নেই।';
-  items.forEach(function(name, i){
-    shortList.unshift({
-      id: Date.now()+i,
-      name: name, qty:'', unit:'Piece', note:'', done:false
-    });
+/* ── intent detection ── */
+function intent(raw){
+  var t=n(raw);
+  if(/\u09b8\u09be\u09b9\u09be\u09af\u09cd\u09af|help|\u0995\u09c0 \u0995\u09b0\u09a4\u09c7 \u09aa\u09be\u09b0\u09cb|\u0995\u09bf\u09ad\u09be\u09ac\u09c7 \u09ac\u09cd\u09af\u09ac\u09b9\u09be\u09b0/.test(t)) return 'help';
+  if(/\u09b8\u09ac \u09aa\u09a3\u09cd\u09af|all product|\u09aa\u09a3\u09cd\u09af\u09c7\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be|product list|\u09aa\u09a3\u09cd\u09af \u09b2\u09bf\u09b8\u09cd\u099f/.test(t)) return 'all_prod';
+  if(/\u0986\u099c\u0995\u09c7\u09b0 \u09ac\u09bf\u0995\u09cd\u09b0\u09bf|today.*sale|\u0986\u099c.*\u09ac\u09bf\u0995\u09cd\u09b0\u09bf|\u09ac\u09bf\u0995\u09cd\u09b0\u09bf\u09b0 \u09b9\u09bf\u09b8\u09be\u09ac/.test(t)) return 'sales';
+  if(/\u09ac\u09be\u0995\u09bf \u09a4\u09be\u09b2\u09bf\u0995\u09be|due list|\u09b8\u09ac \u09ac\u09be\u0995\u09bf|\u0995\u09be\u09b0 \u0995\u09be\u09b0 \u09ac\u09be\u0995\u09bf/.test(t)) return 'due_list';
+  if(/\u09ac\u09bf\u09b2 \u0996\u09cb\u09b2\u09cb|open bill|bill \u0996\u09cb\u09b2/.test(t)) return 'open_bill';
+  if(/\u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f \u09a6\u09c7\u0996\u09be\u0993|\u09b6\u09b0\u09cd\u099f\u09b2\u09bf\u09b8\u09cd\u099f \u09a6\u09c7\u0996|show shortlist/.test(t)) return 'show_sl';
+  if(/(\u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f|\u09b6\u09b0\u09cd\u099f\u09b2\u09bf\u09b8\u09cd\u099f|shortlist|short list|\u0995\u09c7\u09a8\u09be\u09b0 \u09a4\u09be\u09b2\u09bf\u0995\u09be)/.test(t)&&/(\u09ac\u09be\u09a8\u09be\u0993|\u09a4\u09c8\u09b0\u09bf|create|make|\u09af\u09cb\u0997|add|\u09a6\u09be\u0993|\u0995\u09b0\u09cb)/.test(t)) return 'mk_sl';
+  if(/\u09ac\u09bf\u09b2\u09c7 \u09af\u09cb\u0997|\u09ac\u09bf\u09b2\u09c7 \u09b0\u09be\u0996\u09cb|bill.*add|add.*bill/.test(t)) return 'add_bill';
+  if(/^(add|\u09af\u09cb\u0997|\u0986\u09b0\u09cb|\u0986\u09b0\u0993)\b/.test(t)&&_ctx.length) return 'ctx_add';
+  if(/^(remove|\u09ac\u09be\u09a6|\u09b8\u09b0\u09be\u0993|\u09ae\u09c1\u099b\u09cb)\b/.test(t)&&_ctx.length) return 'ctx_remove';
+  if(/^(clear|\u09aa\u09b0\u09bf\u09b7\u09cd\u0995\u09be\u09b0|\u09a8\u09a4\u09c1\u09a8 \u09b9\u09bf\u09b8\u09be\u09ac|reset)\b/.test(t)) return 'ctx_clear';
+  if(/^(total|\u09b8\u09b0\u09cd\u09ac\u09ae\u09cb\u099f|\u098f\u0996\u09a8 \u09ae\u09cb\u099f|\u09ae\u09cb\u099f \u098f\u0996\u09a8|total now)\b/.test(t)) return 'ctx_total';
+  if(/\u09ac\u09be\u0995\u09bf|due|\u09aa\u09be\u0993\u09a8\u09be/.test(t)&&!/\u09a4\u09be\u09b2\u09bf\u0995\u09be|list/.test(t)) return 'cust_due';
+  if(/\u09a6\u09be\u09ae|price|\u09ae\u09c2\u09b2\u09cd\u09af|rate/.test(t)&&!/\u09ae\u09cb\u099f|total|\u0995\u09a4 \u09b9\u09ac\u09c7|\u09b9\u09bf\u09b8\u09be\u09ac/.test(t)) return 'price';
+  if(/\u09ae\u09cb\u099f|total|\u0995\u09a4 \u09b9\u09ac\u09c7|\u0995\u09a4 \u099f\u09be\u0995\u09be|\u09b9\u09bf\u09b8\u09be\u09ac/.test(t)||/\d/.test(b2e(t))) return 'calc';
+  return 'unknown';
+}
+
+function getInvs(){
+  if(window._fbInvoices&&window._fbInvoices.length) return window._fbInvoices;
+  try{return JSON.parse(localStorage.getItem('savedInvoices')||'[]');}catch(e){return [];}
+}
+
+/* ── HANDLERS ── */
+function doHelp(){
+  return '<b>\u0986\u09ae\u09bf \u09af\u09be \u0995\u09b0\u09a4\u09c7 \u09aa\u09be\u09b0\u09bf:</b><br>'
+    +'\ud83d\udce6 <b>\u09a6\u09be\u09ae:</b> "\u0986\u09b2\u09c1 \u09a6\u09be\u09ae?" | "alu price?"<br>'
+    +'\ud83d\udd22 <b>\u09ac\u09b9\u09c1 \u09aa\u09a3\u09cd\u09af:</b> "2kg \u09ae\u09c1\u09dc\u09bf 1kg \u099a\u09bf\u09a8\u09bf 500g \u0986\u09a6\u09be"<br>'
+    +'\u2795 <b>\u09af\u09cb\u0997 \u0995\u09b0\u09c1\u09a8:</b> "add 3kg \u0986\u09b2\u09c1 4kg \u0986\u09a6\u09be"<br>'
+    +'\u2796 <b>\u09ac\u09be\u09a6 \u09a6\u09bf\u09a8:</b> "remove \u099a\u09bf\u09a8\u09bf"<br>'
+    +'\ud83e\uddfe <b>\u09ac\u09bf\u09b2\u09c7 \u09af\u09cb\u0997:</b> "\u09ac\u09bf\u09b2\u09c7 \u09af\u09cb\u0997 \u0995\u09b0\u09cb 2kg \u099a\u09bf\u09a8\u09bf"<br>'
+    +'\ud83d\udcdd <b>\u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f:</b> "\u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f: \u0986\u09b2\u09c1, \u09a1\u09be\u09b2, \u09a4\u09c7\u09b2"<br>'
+    +'\ud83d\udcb0 <b>\u09ac\u09be\u0995\u09bf:</b> "\u0995\u09be\u09b6\u09c7\u09ae \u09ac\u09be\u0995\u09bf?" | "\u09ac\u09be\u0995\u09bf \u09a4\u09be\u09b2\u09bf\u0995\u09be"<br>'
+    +'\ud83d\udcca <b>\u09ac\u09bf\u0995\u09cd\u09b0\u09bf:</b> "\u0986\u099c\u0995\u09c7\u09b0 \u09ac\u09bf\u0995\u09cd\u09b0\u09bf" \u09b8\u09b0\u09cd\u09ac \u09aa\u09a3\u09cd\u09af: "\u09b8\u09ac \u09aa\u09a3\u09cd\u09af"<br>'
+    +'<small>\ud83d\udd04 "\u09aa\u09b0\u09bf\u09b7\u09cd\u0995\u09be\u09b0" \u09ac\u09be "clear" \u09ac\u09b2\u09c1\u09a8 \u09b9\u09bf\u09b8\u09be\u09ac \u09b0\u09bf\u09b8\u09c7\u099f \u0995\u09b0\u09a4\u09c7</small>';
+}
+
+function doAllProd(){
+  var prods=window.products||[];
+  if(!prods.length) return '\ud83d\udce6 \u0995\u09cb\u09a8\u09cb \u09aa\u09a3\u09cd\u09af \u09a8\u09c7\u0987\u0964';
+  return '<b>\ud83d\udce6 \u09b8\u09ac \u09aa\u09a3\u09cd\u09af ('+prods.length+'\u099f\u09bf):</b><br>'
+    +prods.map(function(p){return '&bull; <b>'+p.name+'</b> \u2014 \u09f3'+p.price+' / '+p.unit;}).join('<br>');
+}
+
+function doSales(){
+  var invs=getInvs(); if(!invs.length) return '\ud83d\udcb0 \u0995\u09cb\u09a8\u09cb \u09ac\u09bf\u0995\u09cd\u09b0\u09bf\u09b0 \u09a4\u09a5\u09cd\u09af \u09a8\u09c7\u0987\u0964';
+  var today=new Date().toDateString();
+  var ti=invs.filter(function(i){try{return new Date(i.date).toDateString()===today;}catch(e){return false;}});
+  if(!ti.length) return '\ud83d\udcb0 \u0986\u099c \u0995\u09cb\u09a8\u09cb \u09ac\u09bf\u0995\u09cd\u09b0\u09bf \u09b9\u09af\u09bc\u09a8\u09bf\u0964<br>\u09ae\u09cb\u099f: '+invs.length+'\u099f\u09bf \u09ac\u09bf\u09b2';
+  var tot=0,paid=0,due=0;
+  ti.forEach(function(i){tot+=Number(i.total)||0;paid+=Number(i.paid)||0;due+=Number(i.due)||0;});
+  return '<b>\ud83d\udcb0 \u0986\u099c\u0995\u09c7\u09b0 \u09ac\u09bf\u0995\u09cd\u09b0\u09bf ('+ti.length+'\u099f\u09bf):</b><br>\u09ae\u09cb\u099f: <b>\u09f3'+tot.toFixed(2)+'</b><br>\u09aa\u09b0\u09bf\u09b6\u09cb\u09a7: \u09f3'+paid.toFixed(2)+'<br>\u09ac\u09be\u0995\u09bf: \u09f3'+due.toFixed(2);
+}
+
+function doDueList(){
+  var invs=getInvs(), dues=invs.filter(function(i){return Number(i.due)>0;});
+  if(!dues.length) return '\u2705 \u0995\u09be\u09b0\u09cb \u09ac\u09be\u0995\u09bf \u09a8\u09c5\u0987!';
+  var rows=dues.slice(0,12).map(function(i){return '&bull; <b>'+(i.customer||'\u0985\u099c\u09be\u09a8\u09be')+'</b>: \u09f3'+Number(i.due).toFixed(2);}).join('<br>');
+  var tot=dues.reduce(function(s,i){return s+(Number(i.due)||0);},0);
+  return '<b>\ud83d\udccb \u09ac\u09be\u0995\u09bf ('+dues.length+'\u099c\u09a8):</b><br>'+rows+'<br><br>\u09ae\u09cb\u099f: <b>\u09f3'+tot.toFixed(2)+'</b>';
+}
+
+function doCustDue(raw){
+  var invs=getInvs();
+  var q=n(raw).replace(/\u09ac\u09be\u0995\u09bf|due|\u09aa\u09be\u0993\u09a8\u09be|\u0995\u09a4|\u099f\u09be\u0995\u09be|\?|\u0964/g,' ').replace(/\s+/g,' ').trim();
+  if(!q) return doDueList();
+  var ci=invs.filter(function(i){return i.customer&&n(i.customer).indexOf(q)>-1;});
+  if(!ci.length){
+    var ws=q.split(' ').filter(function(w){return w.length>1;});
+    for(var i=0;i<ws.length;i++){var ww=ws[i]; ci=invs.filter(function(v){return v.customer&&n(v.customer).indexOf(ww)>-1;}); if(ci.length) break;}
+  }
+  if(!ci.length) return '\ud83d\udccb "<b>'+q+'</b>" \u09a8\u09be\u09ae\u09c7 \u0995\u09be\u09b8\u09cd\u099f\u09ae\u09be\u09b0 \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf\u0964';
+  var due=0,paid=0,tot=0;
+  ci.forEach(function(i){due+=Number(i.due)||0;paid+=Number(i.paid)||0;tot+=Number(i.total)||0;});
+  return '<b>\ud83d\udccb '+ci[0].customer+':</b><br>\u09ae\u09cb\u099f: \u09f3'+tot.toFixed(2)+'<br>\u09aa\u09b0\u09bf\u09b6\u09cb\u09a7: \u09f3'+paid.toFixed(2)+'<br>\u09ac\u09be\u0995\u09bf: <b>\u09f3'+due.toFixed(2)+'</b><br>\u09ac\u09bf\u09b2: '+ci.length+'\u099f\u09bf';
+}
+
+function doPrice(raw){
+  var nm=getName(raw),p=findP(nm);
+  if(!p) return '\u274c "<b>'+nm+'</b>" \u09aa\u09a3\u09cd\u09af\u099f\u09bf \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf\u0964<br><small>\u09b8\u09ac \u09aa\u09a3\u09cd\u09af: <i>\u09b8\u09ac \u09aa\u09a3\u09cd\u09af</i></small>';
+  return '\ud83d\udcb0 <b>'+p.name+'</b>: \u09f3'+p.price+' / '+p.unit;
+}
+
+function doCalcMulti(raw){
+  var segs=parseMultiProd(raw);
+  if(!segs.length){
+    var nm=getName(raw),p=findP(nm);
+    if(!p) return '\u274c \u09aa\u09a3\u09cd\u09af \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf: "<b>'+nm+'</b>"';
+    return '\ud83d\udcb0 <b>'+p.name+'</b>: \u09f3'+p.price+' / '+p.unit+'<br><small>\u09aa\u09b0\u09bf\u09ae\u09be\u09a3 \u09a6\u09bf\u09a8 \u2014 \u09af\u09c7\u09ae\u09a8: "5kg '+p.name+'"</small>';
+  }
+  var res=calcSegs(segs);
+  _ctx=res.lines;
+  return fmtCalc(res);
+}
+
+function doCtxAdd(raw){
+  var cleaned=n(raw).replace(/^(add|\u09af\u09cb\u0997|\u0986\u09b0\u09cb|\u0986\u09b0\u0993)\b/,'').trim();
+  var segs=parseMultiProd(cleaned);
+  if(!segs.length) return '\u274c \u09af\u09cb\u0997 \u0995\u09b0\u09be\u09b0 \u09aa\u09a3\u09cd\u09af \u09ac\u09c1\u099d\u09a4\u09c7 \u09aa\u09be\u09b0\u09bf\u09a8\u09bf\u0964';
+  var res=calcSegs(segs);
+  res.lines.forEach(function(l){_ctx.push(l);});
+  var grand=ctxTotal();
+  var html='<b>\u2795 \u09af\u09cb\u0997 \u09b9\u09af\u09bc\u09c7\u099b\u09c7:</b><br>';
+  res.lines.forEach(function(l){html+='&bull; <b>'+l.name+'</b> (\u09f3'+l.lineTotal.toFixed(2)+')<br>';});
+  if(res.notFound.length) html+='<small style="color:#ef4444">\u274c \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf: '+res.notFound.join(', ')+'</small><br>';
+  html+='<br>\u09b8\u09b0\u09cd\u09ac\u09ae\u09cb\u099f \u098f\u0996\u09a8: <b style="font-size:15px">\u09f3'+grand.toFixed(2)+'</b>';
+  return html;
+}
+
+function doCtxRemove(raw){
+  if(!_ctx.length) return '\u274c \u0995\u09cb\u09a8\u09cb \u09b9\u09bf\u09b8\u09be\u09ac \u09a8\u09c7\u0987\u0964';
+  var nm=getName(n(raw).replace(/^(remove|\u09ac\u09be\u09a6|\u09b8\u09b0\u09be\u0993|\u09ae\u09c1\u099b\u09cb)\b/,''));
+  var p=findP(nm);
+  if(!p) return '\u274c \u09aa\u09a3\u09cd\u09af \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf: "'+nm+'"';
+  var before=_ctx.length;
+  _ctx=_ctx.filter(function(l){return n(l.name)!==n(p.name);});
+  if(_ctx.length===before) return '\u274c \u09b9\u09bf\u09b8\u09be\u09ac\u09c7 "'+p.name+'" \u09a8\u09c7\u0987\u0964';
+  return '\u2705 <b>'+p.name+'</b> \u09ac\u09be\u09a6 \u09a6\u09c7\u0993\u09af\u09bc\u09be \u09b9\u09af\u09bc\u09c7\u099b\u09c7\u0964<br>\u09b8\u09b0\u09cd\u09ac\u09ae\u09cb\u099f: <b>\u09f3'+ctxTotal().toFixed(2)+'</b>';
+}
+
+function doCtxTotal(){
+  if(!_ctx.length) return '\u274c \u0995\u09cb\u09a8\u09cb \u09b9\u09bf\u09b8\u09be\u09ac \u09a8\u09c7\u0987\u0964';
+  var html='<b>\ud83d\udd22 \u09ac\u09b0\u09cd\u09a4\u09ae\u09be\u09a8 \u09b9\u09bf\u09b8\u09be\u09ac:</b><br>';
+  _ctx.forEach(function(l){html+='&bull; <b>'+l.name+'</b> = \u09f3'+l.lineTotal.toFixed(2)+'<br>';});
+  html+='<br>\u09b8\u09b0\u09cd\u09ac\u09ae\u09cb\u099f: <b style="font-size:15px">\u09f3'+ctxTotal().toFixed(2)+'</b>';
+  return html;
+}
+
+function doAddBill(raw){
+  var clean=n(raw).replace(/\u09ac\u09bf\u09b2\u09c7 \u09af\u09cb\u0997|\u09ac\u09bf\u09b2\u09c7 \u09b0\u09be\u0996\u09cb|bill.*add|add.*bill/gi,' ');
+  var segs=parseMultiProd(clean);
+  if(!segs.length){var nm2=getName(clean);segs=[{qty:1,unit:'pcs',name:nm2}];}
+  if(typeof billCart==='undefined') return '\u274c \u09ac\u09bf\u09b2 \u09b8\u09bf\u09b8\u09cd\u099f\u09c7\u09ae \u09aa\u09cd\u09b0\u09b8\u09cd\u09a4\u09c1\u09a4 \u09a8\u09c7\u0987\u0964';
+  var added=[],notFound=[];
+  segs.forEach(function(seg){
+    var p=findP(seg.name);
+    if(!p){notFound.push(seg.name);return;}
+    var price=safeNum(p.price),baseQty=toBase(seg.qty,seg.unit),tot2=Math.round(baseQty*price*100)/100;
+    billCart.push({name:p.name,qty:seg.qty,total:tot2,unitPrice:price,unit:seg.unit,mode:'weight'});
+    added.push(p.name+' (\u09f3'+tot2.toFixed(2)+')');
   });
+  if(typeof renderBill==='function') renderBill();
+  if(typeof updateFab==='function') updateFab(billCart.length);
+  var html='\u2705 \u09ac\u09bf\u09b2\u09c7 \u09af\u09cb\u0997:<br>'+added.map(function(a){return '&bull; '+a;}).join('<br>');
+  if(notFound.length) html+='<br><small style="color:#ef4444">\u274c \u09aa\u09be\u0993\u09af\u09bc\u09be \u09af\u09be\u09af\u09bc\u09a8\u09bf: '+notFound.join(', ')+'</small>';
+  html+='<br><small>\u09ac\u09bf\u09b2 \u09b8\u09cd\u09b2\u09bf\u09aa \u0995\u09be\u09b0\u09cd\u09a1\u09c7 \u099a\u09be\u09aa\u09c1\u09a8\u0964</small>';
+  return html;
+}
+
+function doMkSL(raw){
+  var items=parseProductList(raw);
+  if(!items.length) return '\u274c \u09aa\u09a3\u09cd\u09af\u09c7\u09b0 \u09a8\u09be\u09ae \u09a6\u09bf\u09a8\u0964<br><small>\u09af\u09c7\u09ae\u09a8: "\u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f: \u0986\u09b2\u09c1, \u09a1\u09be\u09b2, \u09a4\u09c7\u09b2"</small>';
+  if(typeof shortList==='undefined') return '\u274c \u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f \u09b8\u09bf\u09b8\u09cd\u099f\u09c7\u09ae \u09aa\u09cd\u09b0\u09b8\u09cd\u09a4\u09c1\u09a4 \u09a8\u09c7\u0987\u0964';
+  items.forEach(function(name,i){shortList.unshift({id:Date.now()+i,name:name,qty:'',unit:'Piece',note:'',done:false});});
   if(typeof saveShortList==='function') saveShortList();
   if(typeof renderShortList==='function') renderShortList();
   if(typeof updateSlBadge==='function') updateSlBadge();
-  return '✅ শর্ট লিস্টে যোগ হয়েছে (<b>'+items.length+'টি</b>):<br>'
-    + items.map(function(nm){ return '• '+nm; }).join('<br>');
+  return '\u2705 \u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f\u09c7 \u09af\u09cb\u0997 (<b>'+items.length+'\u099f\u09bf</b>):<br>'+items.map(function(nm){return '&bull; '+nm;}).join('<br>');
 }
 
 /* ── main reply ── */
 function aiReply(raw){
-  var it = intent(raw);
-  if(it==='help')      return doHelp();
-  if(it==='all_prod')  return doAllProd();
-  if(it==='sales')     return doSales();
-  if(it==='due_list')  return doDueList();
-  if(it==='cust_due')  return doCustDue(raw);
-  if(it==='open_bill'){
-    if(typeof openBillPage==='function') openBillPage();
-    return '✅ বিল স্লিপ খোলা হয়েছে!';
-  }
-  if(it==='show_sl'){
-    if(typeof openSLPage==='function') openSLPage();
-    return '✅ শর্ট লিস্ট খোলা হয়েছে!';
-  }
-  if(it==='add_bill') return doAddBill(raw);
-  if(it==='mk_sl')    return doMkSL(raw);
-  if(it==='price')    return doPrice(raw);
-  if(it==='calc')     return doCalc(raw);
-  // last-resort product lookup
-  var p = findP(getName(raw));
-  if(p) return '💰 <b>'+p.name+'</b>: ৳'+p.price+' / '+p.unit;
-  return '🤔 বুঝতে পারিনি।<br><small>সাহায্যের জন্য লিখুন: <i>সাহায্য</i></small>';
+  var it=intent(raw);
+  if(it==='help')       return doHelp();
+  if(it==='all_prod')   return doAllProd();
+  if(it==='sales')      return doSales();
+  if(it==='due_list')   return doDueList();
+  if(it==='cust_due')   return doCustDue(raw);
+  if(it==='open_bill'){ if(typeof openBillPage==='function') openBillPage(); return '\u2705 \u09ac\u09bf\u09b2 \u09b8\u09cd\u09b2\u09bf\u09aa \u0996\u09cb\u09b2\u09be \u09b9\u09af\u09bc\u09c7\u099b\u09c7!'; }
+  if(it==='show_sl'){   if(typeof openSLPage==='function') openSLPage();     return '\u2705 \u09b6\u09b0\u09cd\u099f \u09b2\u09bf\u09b8\u09cd\u099f \u0996\u09cb\u09b2\u09be \u09b9\u09af\u09bc\u09c7\u099b\u09c5!'; }
+  if(it==='add_bill')   return doAddBill(raw);
+  if(it==='mk_sl')      return doMkSL(raw);
+  if(it==='ctx_add')    return doCtxAdd(raw);
+  if(it==='ctx_remove') return doCtxRemove(raw);
+  if(it==='ctx_total')  return doCtxTotal();
+  if(it==='ctx_clear')  { _ctx=[]; return '\u2705 \u09b9\u09bf\u09b8\u09be\u09ac \u09aa\u09b0\u09bf\u09b7\u09cd\u0995\u09be\u09b0 \u09b9\u09af\u09bc\u09c7\u099b\u09c5\u0964'; }
+  if(it==='price')      return doPrice(raw);
+  if(it==='calc')       return doCalcMulti(raw);
+  var p=findP(getName(raw));
+  if(p) return '\ud83d\udcb0 <b>'+p.name+'</b>: \u09f3'+p.price+' / '+p.unit;
+  return '\ud83e\udd14 \u09ac\u09c1\u099d\u09a4\u09c7 \u09aa\u09be\u09b0\u09bf\u09a8\u09bf\u0964<br><small>\u09b8\u09be\u09b9\u09be\u09af\u09cd\u09af\u09c7\u09b0 \u099c\u09a8\u09cd\u09af: <i>\u09b8\u09be\u09b9\u09be\u09af\u09cd\u09af</i></small>';
 }
 
 /* expose for chip onclick */
 window.aiReply = aiReply;
+
 
 })();
 </script>
